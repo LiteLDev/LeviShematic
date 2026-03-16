@@ -1,32 +1,32 @@
-#include "mod/MyMod.h"
+#include "levishematic/LeviShematic.h"
 
 #include "ll/api/mod/RegisterHelper.h"
 
-namespace my_mod {
+namespace levishematic {
 
-MyMod& MyMod::getInstance() {
-    static MyMod instance;
+LeviShematic& LeviShematic::getInstance() {
+    static LeviShematic instance;
     return instance;
 }
 
-bool MyMod::load() {
+bool LeviShematic::load() {
     getSelf().getLogger().debug("Loading...");
     // Code for loading the mod goes here.
     return true;
 }
 
-bool MyMod::enable() {
+bool LeviShematic::enable() {
     getSelf().getLogger().debug("Enabling...");
     // Code for enabling the mod goes here.
     return true;
 }
 
-bool MyMod::disable() {
+bool LeviShematic::disable() {
     getSelf().getLogger().debug("Disabling...");
     // Code for disabling the mod goes here.
     return true;
 }
 
-} // namespace my_mod
+} // namespace levishematic
 
-LL_REGISTER_MOD(my_mod::MyMod, my_mod::MyMod::getInstance());
+LL_REGISTER_MOD(levishematic::LeviShematic, levishematic::LeviShematic::getInstance());

@@ -2,14 +2,14 @@
 
 #include "ll/api/mod/NativeMod.h"
 
-namespace my_mod {
+namespace levishematic {
 
-class MyMod {
+class LeviShematic {
 
 public:
-    static MyMod& getInstance();
+    static LeviShematic& getInstance();
 
-    MyMod() : mSelf(*ll::mod::NativeMod::current()) {}
+    LeviShematic() : mSelf(*ll::mod::NativeMod::current()) {}
 
     [[nodiscard]] ll::mod::NativeMod& getSelf() const { return mSelf; }
 
@@ -30,4 +30,4 @@ private:
     ll::mod::NativeMod& mSelf;
 };
 
-} // namespace my_mod
+} // namespace levishematic

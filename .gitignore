@@ -558,3 +558,5 @@ fabric.properties
 /.idea/
 /.vscode/
 /bin/
+/litematica
+/ll_include
