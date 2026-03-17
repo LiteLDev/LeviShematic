@@ -98,7 +98,7 @@ ProjectionState& getProjectionState();
 // 遍历快照中所有有投影块的 SubChunk，
 // 调用 RenderChunkCoordinator::_setDirty 触发重建。
 // ================================================================
-void triggerRebuildForProjection(std::shared_ptr<RenderChunkCoordinator> coordinator);
+void triggerRebuildForProjection(const std::shared_ptr<RenderChunkCoordinator>& coordinator);
 
 // ================================================================
 // 线程局部状态（供 Hook 使用）

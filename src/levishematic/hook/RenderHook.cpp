@@ -49,16 +49,16 @@ LL_AUTO_TYPE_INSTANCE_HOOK(
     ProjectionSortBlocksHook,
     ll::memory::HookPriority::Normal,
     RenderChunkBuilder,
-    0x7FF6770BA600,
+    &RenderChunkBuilder::_sortBlocks,
     bool,
-    BlockSource&         region,
-    RenderChunkGeometry& renderChunkGeometry,
-    bool                 airAndSimpleBlocks,
-    void*                airAndSimpleBlockBits,
-    void*                buildDetails
+    BlockSource&                                                 region,
+    RenderChunkGeometry&                                         renderChunkGeometry,
+    bool                                                         transparentLeaves,
+    AirAndSimpleBlockBits&                                       airAndSimpleBlocks,
+    RenderChunkPerformanceTrackingData::RenderChunkBuildDetails& renderChunkBuildDetails
 ) {
     // Step 1: 执行原始 _sortBlocks
-    bool result = origin(region, renderChunkGeometry, airAndSimpleBlocks, airAndSimpleBlockBits, buildDetails);
+    bool result = origin(region, renderChunkGeometry, transparentLeaves, airAndSimpleBlocks, renderChunkBuildDetails);
 
     // load 快照（atomic，无锁，工作线程安全）
     tl_currentSnapshot = getProjectionState().getSnapshot();

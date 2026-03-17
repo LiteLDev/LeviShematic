@@ -2,9 +2,7 @@
 
 #include "levishematic/util/PositionUtils.h"
 
-#include "ll/api/memory/Memory.h"
-
-#include <windows.h>
+#include "mc/client/renderer/chunks/RenderChunkCoordinator.h"
 
 namespace levishematic::render {
 
@@ -66,28 +64,17 @@ ProjectionState& getProjectionState() { return gProjectionState; }
 //   min/max 是世界坐标，内部 >>4 转 SubChunk 索引。
 //   immediate=false → 下一帧重建（推荐，避免卡顿）
 // ================================================================
-static constexpr DWORD kSetDirtyRVA = 0x201fd00;
 
-void triggerRebuildForProjection(std::shared_ptr<RenderChunkCoordinator> coordinator) {
+void triggerRebuildForProjection(const std::shared_ptr<RenderChunkCoordinator>& coordinator) {
     if (!coordinator) return;
 
     auto snap = gProjectionState.getSnapshot();
     if (!snap || snap->empty()) return;
 
-    HMODULE hModule   = GetModuleHandle(nullptr);
-    void*   setDirtyAddr = reinterpret_cast<BYTE*>(hModule) + kSetDirtyRVA;
-
     for (const auto& [scKey, vec] : snap->bySubChunk) {
         if (vec.empty()) continue;
         const BlockPos& p = vec[0].pos;
-        ll::memory::addressCall<
-            void,
-            RenderChunkCoordinator*,
-            BlockPos const&,
-            BlockPos const&,
-            bool,
-            bool,
-            bool>(setDirtyAddr, coordinator.get(), p, p, false, false, false);
+        coordinator->_setDirty(p, p, false, false, false);
     }
 }
 
