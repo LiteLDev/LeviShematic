@@ -13,7 +13,7 @@
 //   /schem select <id>               ← 选中指定投影
 //   /schem toggle [render]           ← 开关投影
 //   /schem info                      ← 显示当前投影信息
-//   /schem files                     ← 列出可用的 .litematic 文件
+//   /schem files                     ← 列出可用的 .mcstructure 文件
 //   /schem clear                     ← 清空所有投影
 //   /schem origin <x y z>            ← 设置投影原点
 //   /schem reset                     ← 重置当前投影变换

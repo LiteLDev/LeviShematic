@@ -14,7 +14,6 @@ option_end()
 add_requires("levilamina", {configs = {target_type = get_config("target_type")}})
 
 add_requires("levibuildscript")
-add_requires("zlib 1.3.2")
 add_requires("glm 1.0.1")
 
 if not has_config("vs_runtime") then
@@ -27,7 +26,6 @@ target("LeviShematic") -- Change this to your mod name.
     add_cxflags( "/EHa", "/utf-8", "/W4", "/w44265", "/w44289", "/w44296", "/w45263", "/w44738", "/w45204")
     add_defines("NOMINMAX", "UNICODE")
     add_packages("levilamina")
-    add_packages("zlib")
     add_packages("glm")
     set_exceptions("none") -- To avoid conflicts with /EHa.
     set_kind("shared")

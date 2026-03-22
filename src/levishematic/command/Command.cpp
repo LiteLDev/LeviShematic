@@ -328,13 +328,13 @@ void registerCommands(bool isClient) {
 
             switch (param.axis_) {
             case SchemMirrorParam::axis::x:
-                sel->setMirror(transform::Mirror::MIRROR_X);
+                sel->setMirror(placement::SchematicPlacement::Mirror::MIRROR_X);
                 break;
             case SchemMirrorParam::axis::z:
-                sel->setMirror(transform::Mirror::MIRROR_Z);
+                sel->setMirror(placement::SchematicPlacement::Mirror::MIRROR_Z);
                 break;
             case SchemMirrorParam::axis::none:
-                sel->setMirror(transform::Mirror::NONE);
+                sel->setMirror(placement::SchematicPlacement::Mirror::NONE);
                 break;
             }
 
@@ -503,29 +503,11 @@ void registerCommands(bool isClient) {
             msg += "  Bounding box: (" + std::to_string(minBox.x) + "," + std::to_string(minBox.y) + "," + std::to_string(minBox.z)
                  + ") to (" + std::to_string(maxBox.x) + "," + std::to_string(maxBox.y) + "," + std::to_string(maxBox.z) + ")\n";
 
-            if (sel->hasSchematic()) {
-                auto& meta = sel->getSchematic()->getMetadata();
-                msg += "  Schematic: " + meta.name + "\n";
-                msg += "  Author: " + meta.author + "\n";
-                msg += "  Regions: " + std::to_string(meta.regionCount) + "\n";
-            }
-
-            // 子区域信息
-            auto& subRegions = sel->getSubRegions();
-            if (!subRegions.empty()) {
-                msg += "  Sub-regions:\n";
-                for (const auto& [name, sub] : subRegions) {
-                    msg += "    - " + name;
-                    msg += (sub.enabled ? "" : " §c[DISABLED]§r");
-                    msg += "\n";
-                }
-            }
-
             output.success(msg);
         });
 
     // ================================================================
-    // /schem files（列出可用的 .litematic 文件）
+    // /schem files（列出可用的 .mcstructure 文件）
     // ================================================================
     schemCmd.overload()
         .text("files")
@@ -533,7 +515,7 @@ void registerCommands(bool isClient) {
             auto files = pm.listAvailableFiles();
             if (files.empty()) {
                 output.success(
-                    "No schematic files found in: {}\nPlace .litematic or .mcstructure files there and try again.",
+                    "No .mcstructure files found in: {}\nPlace .mcstructure files there and try again.",
                     pm.getSchematicDirectory().string()
                 );
                 return;

@@ -1,9 +1,7 @@
 #include "PlacementManager.h"
 
 #include "levishematic/core/DataManager.h"
-#include "levishematic/schematic/NBTReader.h"
 #include "levishematic/render/ProjectionRenderer.h"
-#include "levishematic/schematic/LitematicSchematic.h"
 
 #include "ll/api/service/Bedrock.h"
 
@@ -15,68 +13,6 @@
 #include <fstream>
 
 namespace levishematic::placement {
-
-// ================================================================
-// SchematicHolder 实现
-// ================================================================
-
-std::shared_ptr<schematic::LitematicSchematic>
-SchematicHolder::loadSchematic(const std::filesystem::path& path) {
-    // 规范化路径作为 key
-    std::string key = std::filesystem::absolute(path).string();
-
-    // 检查缓存
-    auto it = mCache.find(key);
-    if (it != mCache.end() && it->second && it->second->isLoaded()) {
-        return it->second;
-    }
-
-    // 加载新的 Schematic
-    auto schem = std::make_shared<schematic::LitematicSchematic>();
-    if (!schem->loadFromFile(path)) {
-        return nullptr; // 加载失败
-    }
-
-    mCache[key] = schem;
-    return schem;
-}
-
-std::shared_ptr<schematic::LitematicSchematic>
-SchematicHolder::getSchematic(const std::string& key) const {
-    auto it = mCache.find(key);
-    return (it != mCache.end()) ? it->second : nullptr;
-}
-
-bool SchematicHolder::hasSchematic(const std::string& key) const {
-    return mCache.find(key) != mCache.end();
-}
-
-void SchematicHolder::cleanup() {
-    for (auto it = mCache.begin(); it != mCache.end(); ) {
-        // use_count == 1 表示只有缓存自身持有引用
-        if (it->second.use_count() <= 1) {
-            it = mCache.erase(it);
-        } else {
-            ++it;
-        }
-    }
-}
-
-void SchematicHolder::clear() {
-    mCache.clear();
-}
-
-std::vector<std::string> SchematicHolder::getCachedNames() const {
-    std::vector<std::string> names;
-    names.reserve(mCache.size());
-    for (const auto& [key, schem] : mCache) {
-        if (schem && schem->isLoaded()) {
-            names.push_back(schem->getMetadata().name);
-        }
-    }
-    return names;
-}
-
 // ================================================================
 // PlacementManager 实现
 // ================================================================
@@ -86,52 +22,15 @@ SchematicPlacement::Id PlacementManager::loadAndPlace(
     BlockPos                      origin,
     const std::string&            name
 ) {
-    if (path.extension() == ".mcstructure") {
-        auto placement = loadMcstructurePlacement(path, origin, name);
-        if (!placement.has_value()) {
-            return 0;
-        }
-
-        auto id = placement->getId();
-        placement->setFilePath(std::filesystem::absolute(path).string());
-        mPlacements.push_back(std::move(*placement));
-        mSelectedId = id;
-        notifyChange();
-        return id;
-    }
-
-    // 尝试加载 Schematic（优先从缓存获取）
-    auto schem = mHolder.loadSchematic(path);
-    if (!schem) {
-        return 0; // 加载失败
-    }
-
-    // 创建 Placement
-    SchematicPlacement placement(schem, origin, name);
-    placement.setFilePath(std::filesystem::absolute(path).string());
-
-    SchematicPlacement::Id id = placement.getId();
-    mPlacements.push_back(std::move(placement));
-    mSelectedId = id; // 自动选中新创建的
-
-    notifyChange();
-    return id;
-}
-
-SchematicPlacement::Id PlacementManager::addPlacement(
-    std::shared_ptr<schematic::LitematicSchematic> schematic,
-    BlockPos                                        origin,
-    const std::string&                              name
-) {
-    if (!schematic || !schematic->isLoaded()) {
+    auto placement = loadMcstructurePlacement(path, origin, name);
+    if (!placement.has_value()) {
         return 0;
     }
 
-    SchematicPlacement placement(std::move(schematic), origin, name);
-    SchematicPlacement::Id id = placement.getId();
-    mPlacements.push_back(std::move(placement));
+    auto id = placement->getId();
+    placement->setFilePath(std::filesystem::absolute(path).string());
+    mPlacements.push_back(std::move(*placement));
     mSelectedId = id;
-
     notifyChange();
     return id;
 }
@@ -235,10 +134,7 @@ std::filesystem::path PlacementManager::resolveSchematicPath(const std::string& 
         fs::path inDir = mSchematicDir / filename;
         if (fs::exists(inDir)) return inDir;
 
-        // 尝试添加已支持的扩展名
-        fs::path withExt = mSchematicDir / (filename + ".litematic");
-        if (fs::exists(withExt)) return withExt;
-        withExt = mSchematicDir / (filename + ".mcstructure");
+        fs::path withExt = mSchematicDir / (filename + ".mcstructure");
         if (fs::exists(withExt)) return withExt;
     }
 
@@ -246,9 +142,7 @@ std::filesystem::path PlacementManager::resolveSchematicPath(const std::string& 
     if (fs::exists(p)) return fs::absolute(p);
 
     // 4. 尝试添加扩展名
-    fs::path withExt(filename + ".litematic");
-    if (fs::exists(withExt)) return fs::absolute(withExt);
-    withExt = fs::path(filename + ".mcstructure");
+    fs::path withExt(filename + ".mcstructure");
     if (fs::exists(withExt)) return fs::absolute(withExt);
 
     // 未找到，返回原始路径（让调用方处理错误）
@@ -266,7 +160,7 @@ std::vector<std::string> PlacementManager::listAvailableFiles() const {
     for (const auto& entry : fs::directory_iterator(mSchematicDir)) {
         if (!entry.is_regular_file()) continue;
         auto ext = entry.path().extension().string();
-        if (ext == ".litematic" || ext == ".mcstructure") {
+        if (ext == ".mcstructure") {
             files.push_back(entry.path().filename().string());
         }
     }
@@ -282,7 +176,6 @@ std::vector<std::string> PlacementManager::listAvailableFiles() const {
 void PlacementManager::clear() {
     mPlacements.clear();
     mSelectedId = 0;
-    mHolder.clear();
     // 清空 ProjectionState
     render::getProjectionState().clear();
 }
