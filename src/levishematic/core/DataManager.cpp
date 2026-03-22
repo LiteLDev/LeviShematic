@@ -2,6 +2,8 @@
 
 #include "levishematic/render/ProjectionRenderer.h"
 
+#include "ll/api/service/ServerInfo.h"
+
 #include <filesystem>
 
 namespace levishematic::core {
@@ -23,17 +25,37 @@ void DataManager::rebuildAndRefresh(std::shared_ptr<RenderChunkCoordinator> coor
     mPlacementManager.rebuildAndRefresh(std::move(coordinator));
 }
 
-void DataManager::init() {
-    // 初始化 Schematic 文件搜索目录
-    // 默认在工作目录下的 "schematics" 子目录，加载和保存共用
-    namespace fs = std::filesystem;
-    fs::path schemDir = fs::current_path() / "schematics";
-    if (!fs::exists(schemDir)) {
-        // 尝试创建目录（静默失败）
-        std::error_code ec;
-        fs::create_directories(schemDir, ec);
+const std::filesystem::path& DataManager::getSchematicDirectory() const {
+    return mSchematicDirectory;
+}
+
+std::filesystem::path DataManager::ensureSchematicDirectory() {
+    std::error_code ec;
+    std::filesystem::create_directories(mSchematicDirectory, ec);
+    return mSchematicDirectory;
+}
+
+std::filesystem::path DataManager::makeSchematicFilePath(const std::filesystem::path& path) const {
+    auto result = path;
+    if (!result.is_absolute()) {
+        result = mSchematicDirectory / result;
     }
-    mPlacementManager.setSchematicDirectory(schemDir);
+
+    if (result.extension() != ".mcstructure") {
+        result += ".mcstructure";
+    }
+
+    return result;
+}
+
+void DataManager::init() {
+    std::filesystem::path structurePath;
+    structurePath /= ll::getWorldPath().value();
+    structurePath = structurePath.parent_path().parent_path();
+    structurePath /= "schematics";
+
+    mSchematicDirectory = structurePath;
+    mPlacementManager.setSchematicDirectory(ensureSchematicDirectory());
 }
 
 void DataManager::shutdown() {

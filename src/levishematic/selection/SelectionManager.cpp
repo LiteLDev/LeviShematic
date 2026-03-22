@@ -6,8 +6,10 @@
 #include "levishematic/selection/SelectionManager.h"
 
 #include "levishematic/LeviShematic.h"
+#include "levishematic/core/DataManager.h"
 
-#include "ll/api/mod/NativeMod.h"
+#include "ll/api/io/FileUtils.h"
+#include "ll/api/service/Bedrock.h"
 
 #include "mc/nbt/CompoundTag.h"
 #include "mc/world/level/BlockPos.h"
@@ -17,13 +19,8 @@
 #include "mc/world/level/levelgen/structure/StructureSettings.h"
 #include "mc/world/level/levelgen/structure/StructureTemplate.h"
 
-#include "ll/api/io/FileUtils.h"
-#include "ll/api/service/Bedrock.h"
-#include "ll/api/service/ServerInfo.h"
-
 #include <algorithm>
 #include <filesystem>
-#include <fstream>
 
 static auto& getLogger() {
     return levishematic::LeviShematic::getInstance().getSelf().getLogger();
@@ -106,7 +103,6 @@ bool SelectionManager::saveToMcstructure(const std::string& name, Dimension& dim
         BlockPos minPos = getMinCorner();
         BlockPos size   = getSize();
 
-        // 构建 StructureSettings
         StructureSettings setting;
         setting.mStructureOffset = BlockPos::ZERO();
         setting.mStructureSize   = size;
@@ -128,13 +124,9 @@ bool SelectionManager::saveToMcstructure(const std::string& name, Dimension& dim
         // 序列化为 CompoundTag
         auto nbtTag = structureTemplate->save();
 
-        // 构建保存路径
-        std::filesystem::path structurePath = std::filesystem::current_path() / "schematics";
-        std::error_code ec;
-        std::filesystem::create_directories(structurePath, ec);
-        structurePath /= (name + ".mcstructure");
+        auto structurePath = core::DataManager::getInstance().makeSchematicFilePath(std::filesystem::path{name});
+        core::DataManager::getInstance().ensureSchematicDirectory();
 
-        // 使用 ll 工具写入文件
         ll::utils::file_utils::writeFile(structurePath, nbtTag->toBinaryNbt(), true);
 
         getLogger().info(

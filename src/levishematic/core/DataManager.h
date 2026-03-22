@@ -14,6 +14,7 @@
 #include "levishematic/schematic/placement/PlacementManager.h"
 #include "levishematic/selection/SelectionManager.h"
 
+#include <filesystem>
 #include <memory>
 
 // 前向声明
@@ -77,6 +78,11 @@ public:
     // ---- 便利方法：重建投影并刷新渲染 ----
     void rebuildAndRefresh(std::shared_ptr<RenderChunkCoordinator> coordinator);
 
+    // ---- Schematic 文件路径 ----
+    const std::filesystem::path& getSchematicDirectory() const;
+    std::filesystem::path        ensureSchematicDirectory();
+    std::filesystem::path        makeSchematicFilePath(const std::filesystem::path& path) const;
+
     // ---- 生命周期 ----
     void init();
     void shutdown();
@@ -86,6 +92,7 @@ private:
     ~DataManager() = default;
 
     placement::PlacementManager mPlacementManager;
+    std::filesystem::path       mSchematicDirectory;
     ToolMode                    mToolMode   = ToolMode::NONE;
     LayerRange                  mLayerRange;
 };

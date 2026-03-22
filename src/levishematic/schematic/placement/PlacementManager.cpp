@@ -28,7 +28,7 @@ SchematicPlacement::Id PlacementManager::loadAndPlace(
     }
 
     auto id = placement->getId();
-    placement->setFilePath(std::filesystem::absolute(path).string());
+    placement->setFilePath(path.is_absolute() ? path.string() : std::filesystem::absolute(path).string());
     mPlacements.push_back(std::move(*placement));
     mSelectedId = id;
     notifyChange();
@@ -36,14 +36,14 @@ SchematicPlacement::Id PlacementManager::loadAndPlace(
 }
 
 bool PlacementManager::removePlacement(SchematicPlacement::Id id) {
-    auto it = std::find_if(mPlacements.begin(), mPlacements.end(),
-        [id](const SchematicPlacement& p) { return p.getId() == id; });
+    auto it = std::find_if(mPlacements.begin(), mPlacements.end(), [id](const SchematicPlacement& p) {
+        return p.getId() == id;
+    });
 
     if (it == mPlacements.end()) return false;
 
     mPlacements.erase(it);
 
-    // 如果删除的是当前选中的，自动选中最后一个
     if (mSelectedId == id) {
         if (!mPlacements.empty()) {
             mSelectedId = mPlacements.back().getId();
@@ -63,14 +63,16 @@ void PlacementManager::removeAllPlacements() {
 }
 
 SchematicPlacement* PlacementManager::getPlacement(SchematicPlacement::Id id) {
-    auto it = std::find_if(mPlacements.begin(), mPlacements.end(),
-        [id](const SchematicPlacement& p) { return p.getId() == id; });
+    auto it = std::find_if(mPlacements.begin(), mPlacements.end(), [id](const SchematicPlacement& p) {
+        return p.getId() == id;
+    });
     return (it != mPlacements.end()) ? &(*it) : nullptr;
 }
 
 const SchematicPlacement* PlacementManager::getPlacement(SchematicPlacement::Id id) const {
-    auto it = std::find_if(mPlacements.begin(), mPlacements.end(),
-        [id](const SchematicPlacement& p) { return p.getId() == id; });
+    auto it = std::find_if(mPlacements.begin(), mPlacements.end(), [id](const SchematicPlacement& p) {
+        return p.getId() == id;
+    });
     return (it != mPlacements.end()) ? &(*it) : nullptr;
 }
 
@@ -101,9 +103,11 @@ void PlacementManager::rebuildProjection() {
         if (!placement.isEnabled() || !placement.isRenderEnabled()) continue;
 
         auto entries = placement.generateProjEntries();
-        allEntries.insert(allEntries.end(),
-                          std::make_move_iterator(entries.begin()),
-                          std::make_move_iterator(entries.end()));
+        allEntries.insert(
+            allEntries.end(),
+            std::make_move_iterator(entries.begin()),
+            std::make_move_iterator(entries.end())
+        );
     }
 
     // 更新全局 ProjectionState
@@ -122,45 +126,61 @@ void PlacementManager::rebuildAndRefresh(std::shared_ptr<RenderChunkCoordinator>
 
 std::filesystem::path PlacementManager::resolveSchematicPath(const std::string& filename) const {
     namespace fs = std::filesystem;
+    auto&        dm = core::DataManager::getInstance();
 
-    // 1. 如果是绝对路径且存在，直接返回
-    fs::path p(filename);
-    if (p.is_absolute() && fs::exists(p)) {
-        return p;
+    auto schematicDir = mSchematicDir.empty() ? dm.getSchematicDirectory() : mSchematicDir;
+    fs::path inputPath(filename);
+
+    if (inputPath.is_absolute()) {
+        if (fs::exists(inputPath)) {
+            return inputPath;
+        }
+
+        auto absoluteWithExt = dm.makeSchematicFilePath(inputPath);
+        if (fs::exists(absoluteWithExt)) {
+            return absoluteWithExt;
+        }
+
+        return inputPath;
     }
 
-    // 2. 在 schematic 目录中查找
-    if (!mSchematicDir.empty()) {
-        fs::path inDir = mSchematicDir / filename;
-        if (fs::exists(inDir)) return inDir;
+    if (!schematicDir.empty()) {
+        auto inDir = schematicDir / inputPath;
+        if (fs::exists(inDir)) {
+            return inDir;
+        }
 
-        fs::path withExt = mSchematicDir / (filename + ".mcstructure");
-        if (fs::exists(withExt)) return withExt;
+        auto inDirWithExt = dm.makeSchematicFilePath(inDir);
+        if (fs::exists(inDirWithExt)) {
+            return inDirWithExt;
+        }
     }
 
-    // 3. 在当前目录查找
-    if (fs::exists(p)) return fs::absolute(p);
+    if (fs::exists(inputPath)) {
+        return fs::absolute(inputPath);
+    }
 
-    // 4. 尝试添加扩展名
-    fs::path withExt(filename + ".mcstructure");
-    if (fs::exists(withExt)) return fs::absolute(withExt);
+    auto withExt = dm.makeSchematicFilePath(inputPath);
+    if (fs::exists(withExt)) {
+        return fs::absolute(withExt);
+    }
 
-    // 未找到，返回原始路径（让调用方处理错误）
-    return p;
+    return !schematicDir.empty() ? dm.makeSchematicFilePath(schematicDir / inputPath) : withExt;
 }
 
 std::vector<std::string> PlacementManager::listAvailableFiles() const {
     namespace fs = std::filesystem;
-    std::vector<std::string> files;
+    auto&        dm = core::DataManager::getInstance();
 
-    if (mSchematicDir.empty() || !fs::is_directory(mSchematicDir)) {
+    std::vector<std::string> files;
+    auto schematicDir = mSchematicDir.empty() ? dm.getSchematicDirectory() : mSchematicDir;
+    if (schematicDir.empty() || !fs::is_directory(schematicDir)) {
         return files;
     }
 
-    for (const auto& entry : fs::directory_iterator(mSchematicDir)) {
+    for (const auto& entry : fs::directory_iterator(schematicDir)) {
         if (!entry.is_regular_file()) continue;
-        auto ext = entry.path().extension().string();
-        if (ext == ".mcstructure") {
+        if (entry.path().extension() == ".mcstructure") {
             files.push_back(entry.path().filename().string());
         }
     }
