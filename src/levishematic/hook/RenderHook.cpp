@@ -17,7 +17,8 @@ struct BlockQueueEntry {
     const Block* blockInfo;
 };
 
-struct RenderChunkGeometry {
+class RenderChunkGeometry {
+public:
     char     unk[0x34];
     BlockPos mPosition;
     BlockPos mCenter;
@@ -32,21 +33,15 @@ using namespace levishematic::util;
 namespace {
 
 bool gRenderHooksRegistered = false;
-unsigned long long _sortBlocks_va;
 
 } // namespace
 
-void atest() {
-    HMODULE hModule = GetModuleHandle(nullptr);
-    _sortBlocks_va = reinterpret_cast<unsigned long long>(hModule) + 0x201a600;
-}
 
-// 0x201a600：
 LL_TYPE_INSTANCE_HOOK(
     ProjectionSortBlocksHook,
     ll::memory::HookPriority::Normal,
     RenderChunkBuilder,
-    _sortBlocks_va,
+    &RenderChunkBuilder::_sortBlocks,
     bool,
     BlockSource&                                                 region,
     RenderChunkGeometry&                                         renderChunkGeometry,

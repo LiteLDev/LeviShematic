@@ -14,7 +14,6 @@ LeviShematic& LeviShematic::getInstance() {
 
 bool LeviShematic::load() {
     getSelf().getLogger().debug("Loading...");
-    levishematic::hook::atest();
     return true;
 }
 
