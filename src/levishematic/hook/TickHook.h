@@ -2,6 +2,7 @@
 
 namespace levishematic::hook {
 
-// Tick-related hooks are registered via the hook macro in TickHook.cpp.
+void registerTickHooks();
+void unregisterTickHooks();
 
 } // namespace levishematic::hook

@@ -58,6 +58,7 @@ public:
     [[nodiscard]] Result<PlacementLoadInfo, PlacementError> loadSchematic(
         std::string const& filename,
         BlockPos           origin,
+        int                dimensionId,
         std::string const& explicitName = {}
     );
 

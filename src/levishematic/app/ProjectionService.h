@@ -21,7 +21,7 @@ public:
     [[nodiscard]] bool flushRefresh(
         std::shared_ptr<RenderChunkCoordinator> const& coordinator
     );
-    [[nodiscard]] std::shared_ptr<const render::ProjectionScene> scene() const;
+    [[nodiscard]] std::shared_ptr<const render::ProjectionScene::DimensionScene> sceneForDimension(int dimensionId) const;
     void                                                         clear();
 
 private:

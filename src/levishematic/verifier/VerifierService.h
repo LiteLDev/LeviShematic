@@ -5,6 +5,8 @@
 #include "levishematic/schematic/placement/PlacementStore.h"
 #include "levishematic/verifier/VerifierTypes.h"
 
+#include "ll/api/event/ListenerBase.h"
+
 #include <memory>
 #include <unordered_map>
 
@@ -30,6 +32,10 @@ public:
     void handleBlockChanged(BlockSource& source, BlockPos const& pos, Block const& block);
     void refresh();
     void refresh(BlockSource& source);
+    void handleJoinLevel();
+    void handleExitLevel();
+    void handleDimensionChanged();
+    void ensureRuntimeBindings();
     void clear();
     void attachToRuntime();
     void detachFromRuntime();
@@ -44,15 +50,16 @@ private:
     ) const;
     void syncExpectedBlocks();
     void clearStatuses();
-    void updateStatus(BlockPos const& pos, VerificationStatus status);
+    void updateStatus(int dimensionId, BlockPos const& pos, VerificationStatus status);
     [[nodiscard]] std::shared_ptr<RenderChunkCoordinator> resolveCoordinator(BlockSource const& source) const;
+    [[nodiscard]] BlockSource* resolveCurrentBlockSource() const;
 
     VerifierState&                   mState;
     placement::PlacementState const& mPlacementState;
     render::ProjectionProjector&     mProjector;
     std::unique_ptr<levishematic::verifier_block_listener::VerifierBlockListener> mListener;
     std::unique_ptr<placement::PlacementProjectionCache>                         mPlacementCache;
-    std::unordered_map<uint64_t, ExpectedBlockSnapshot>                          mExpectedBlocksByPos;
+    std::unordered_map<util::WorldBlockKey, ExpectedBlockSnapshot, util::WorldBlockKeyHash> mExpectedBlocksByKey;
     std::unordered_map<int, BlockSource*>                                        mSourcesByDimension;
     uint64_t                                                                     mExpectedPlacementsRevision = 0;
 };

@@ -7,6 +7,7 @@
 #include "mc/world/level/BlockPos.h"
 
 #include <cstdint>
+#include <functional>
 
 namespace levishematic::util {
 
@@ -66,6 +67,31 @@ inline BlockPos subChunkOrigin(int wx, int wy, int wz) noexcept {
         return v / 16 - (v % 16 != 0 && v < 0 ? 1 : 0);
     };
     return {floorDiv16(wx) * 16, floorDiv16(wy) * 16, floorDiv16(wz) * 16};
+}
+
+struct WorldBlockKey {
+    int      dimensionId = 0;
+    uint64_t posKey      = 0;
+
+    [[nodiscard]] bool operator==(WorldBlockKey const& other) const noexcept {
+        return dimensionId == other.dimensionId && posKey == other.posKey;
+    }
+};
+
+struct WorldBlockKeyHash {
+    [[nodiscard]] size_t operator()(WorldBlockKey const& key) const noexcept {
+        auto dimHash = std::hash<int>{}(key.dimensionId);
+        auto posHash = std::hash<uint64_t>{}(key.posKey);
+        return dimHash ^ (posHash + 0x9e3779b9 + (dimHash << 6) + (dimHash >> 2));
+    }
+};
+
+inline WorldBlockKey makeWorldBlockKey(int dimensionId, BlockPos const& pos) noexcept {
+    return WorldBlockKey{dimensionId, encodePosKey(pos)};
+}
+
+inline WorldBlockKey makeWorldBlockKey(int dimensionId, uint64_t posKey) noexcept {
+    return WorldBlockKey{dimensionId, posKey};
 }
 
 } // namespace levishematic::util

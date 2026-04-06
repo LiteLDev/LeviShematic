@@ -13,6 +13,7 @@ namespace {
 mce::Color colorForStatus(verifier::VerificationStatus status) {
     switch (status) {
     case verifier::VerificationStatus::Matched:
+    case verifier::VerificationStatus::MissingBlock:
         return kDefaultProjectionColor;
     case verifier::VerificationStatus::PropertyMismatch:
         return kPropertyMismatchProjectionColor;
@@ -25,8 +26,8 @@ mce::Color colorForStatus(verifier::VerificationStatus status) {
 }
 
 void markSceneSubChunks(
-    std::unordered_set<uint64_t>&              dirtyKeys,
-    std::shared_ptr<const ProjectionScene> const& scene
+    std::unordered_set<uint64_t>&          dirtyKeys,
+    ProjectionScene::DimensionScene const* scene
 ) {
     if (!scene) {
         return;
@@ -41,8 +42,8 @@ void markSceneSubChunks(
 
 void triggerRebuildForScene(
     std::shared_ptr<RenderChunkCoordinator> const& coordinator,
-    std::shared_ptr<const ProjectionScene> const&  currentScene,
-    std::shared_ptr<const ProjectionScene> const&  previousScene = nullptr
+    ProjectionScene::DimensionScene const*         currentScene,
+    ProjectionScene::DimensionScene const*         previousScene = nullptr
 ) {
     if (!coordinator) {
         return;
@@ -78,7 +79,7 @@ std::shared_ptr<const ProjectionScene> buildScene(
     placement::PlacementProjectionCache& placementCache
 ) {
     auto next = std::make_shared<ProjectionScene>();
-    std::unordered_map<uint64_t, ProjEntry> entriesByPos;
+    std::unordered_map<int, std::unordered_map<uint64_t, ProjEntry>> entriesByDimension;
 
     for (auto placementId : state.order) {
         auto placementIt = state.placements.find(placementId);
@@ -91,15 +92,17 @@ std::shared_ptr<const ProjectionScene> buildScene(
             continue;
         }
 
-        auto projection = placementCache.view(placement);
-        for (auto const& [posKey, expected] : projection.expectedBlocksByPos) {
-            auto statusIt = verifierState.statusByPos.find(posKey);
-            auto status = statusIt == verifierState.statusByPos.end()
+        auto projection      = placementCache.view(placement);
+        auto& entriesByPos   = entriesByDimension[placement.dimensionId];
+        auto& dimensionScene = next->byDimension[placement.dimensionId];
+        for (auto const& [worldKey, expected] : projection.expectedBlocksByKey) {
+            auto statusIt = verifierState.statusByKey.find(worldKey);
+            auto status = statusIt == verifierState.statusByKey.end()
                 ? verifier::VerificationStatus::Unknown
                 : statusIt->second;
             if (verifier::isHiddenStatus(status)) {
-                entriesByPos.erase(posKey);
-                next->posColorMap.erase(posKey);
+                entriesByPos.erase(worldKey.posKey);
+                dimensionScene.posColorMap.erase(worldKey.posKey);
                 continue;
             }
 
@@ -108,14 +111,18 @@ std::shared_ptr<const ProjectionScene> buildScene(
                 .block = expected.renderBlock,
                 .color = colorForStatus(status),
             };
-            entriesByPos[posKey]     = entry;
-            next->posColorMap[posKey] = entry.color;
+            entriesByPos[worldKey.posKey]               = entry;
+            dimensionScene.posColorMap[worldKey.posKey] = entry.color;
         }
     }
 
-    for (auto const& [posKey, entry] : entriesByPos) {
-        (void)posKey;
-        next->bySubChunk[util::subChunkKeyFromWorldPos(entry.pos.x, entry.pos.y, entry.pos.z)].push_back(entry);
+    for (auto& [dimensionId, entriesByPos] : entriesByDimension) {
+        auto& dimensionScene = next->byDimension[dimensionId];
+        for (auto const& [posKey, entry] : entriesByPos) {
+            (void)posKey;
+            dimensionScene.bySubChunk[util::subChunkKeyFromWorldPos(entry.pos.x, entry.pos.y, entry.pos.z)]
+                .push_back(entry);
+        }
     }
 
     return next;
@@ -123,8 +130,8 @@ std::shared_ptr<const ProjectionScene> buildScene(
 
 } // namespace
 
-thread_local std::shared_ptr<const ProjectionScene> tl_currentScene;
-thread_local bool                                   tl_hasProjection = false;
+thread_local std::shared_ptr<const ProjectionScene::DimensionScene> tl_currentScene;
+thread_local bool                                                   tl_hasProjection = false;
 
 ProjectionProjector::ProjectionProjector()
     : mScene(std::make_shared<const ProjectionScene>())
@@ -134,6 +141,20 @@ ProjectionProjector::~ProjectionProjector() = default;
 
 std::shared_ptr<const ProjectionScene> ProjectionProjector::scene() const {
     return mScene.load(std::memory_order_acquire);
+}
+
+std::shared_ptr<const ProjectionScene::DimensionScene> ProjectionProjector::sceneForDimension(int dimensionId) const {
+    auto current = scene();
+    if (!current) {
+        return nullptr;
+    }
+
+    auto it = current->byDimension.find(dimensionId);
+    if (it == current->byDimension.end()) {
+        return nullptr;
+    }
+
+    return std::shared_ptr<const ProjectionScene::DimensionScene>(current, &it->second);
 }
 
 bool ProjectionProjector::needsRefresh(uint64_t placementsRevision, uint64_t verifierRevision) const {
@@ -157,13 +178,23 @@ void ProjectionProjector::rebuildAndRefresh(
 }
 
 void ProjectionProjector::triggerRebuild(std::shared_ptr<RenderChunkCoordinator> const& coordinator) const {
-    triggerRebuildForScene(coordinator, scene());
+    auto current = scene();
+    if (!current) {
+        return;
+    }
+
+    for (auto const& [dimensionId, dimensionScene] : current->byDimension) {
+        (void)dimensionId;
+        triggerRebuildForScene(coordinator, &dimensionScene);
+    }
 }
 
 void ProjectionProjector::triggerRebuildForPosition(
+    int                                             dimensionId,
     BlockPos const&                                pos,
     std::shared_ptr<RenderChunkCoordinator> const& coordinator
 ) const {
+    (void)dimensionId;
     if (!coordinator) {
         return;
     }
@@ -202,7 +233,40 @@ void ProjectionProjector::rebuildLocked(
     }
 
     if (triggerRefresh) {
-        triggerRebuildForScene(coordinator, currentScene, previousScene);
+        std::unordered_set<int> dimensionIds;
+        if (currentScene) {
+            for (auto const& [dimensionId, scene] : currentScene->byDimension) {
+                (void)scene;
+                dimensionIds.insert(dimensionId);
+            }
+        }
+        if (previousScene) {
+            for (auto const& [dimensionId, scene] : previousScene->byDimension) {
+                (void)scene;
+                dimensionIds.insert(dimensionId);
+            }
+        }
+
+        for (int dimensionId : dimensionIds) {
+            ProjectionScene::DimensionScene const* currentDimensionScene  = nullptr;
+            ProjectionScene::DimensionScene const* previousDimensionScene = nullptr;
+
+            if (currentScene) {
+                auto it = currentScene->byDimension.find(dimensionId);
+                if (it != currentScene->byDimension.end()) {
+                    currentDimensionScene = &it->second;
+                }
+            }
+
+            if (previousScene) {
+                auto it = previousScene->byDimension.find(dimensionId);
+                if (it != previousScene->byDimension.end()) {
+                    previousDimensionScene = &it->second;
+                }
+            }
+
+            triggerRebuildForScene(coordinator, currentDimensionScene, previousDimensionScene);
+        }
     }
 }
 

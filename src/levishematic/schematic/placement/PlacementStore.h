@@ -32,6 +32,7 @@ public:
     PlacementId createPlacement(
         std::shared_ptr<const SchematicAsset> asset,
         BlockPos                              origin,
+        int                                   dimensionId,
         std::string                           name,
         std::filesystem::path                 filePath
     );

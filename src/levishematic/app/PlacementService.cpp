@@ -52,6 +52,7 @@ PlacementService::PlacementService(
 Result<PlacementLoadInfo, PlacementError> PlacementService::loadSchematic(
     std::string const& filename,
     BlockPos           origin,
+    int                dimensionId,
     std::string const& explicitName
 ) {
     auto resolvedPath = mRuntime.resolveSchematicPath(filename);
@@ -68,6 +69,7 @@ Result<PlacementLoadInfo, PlacementError> PlacementService::loadSchematic(
     auto placementId = mPlacementStore.createPlacement(
         assetResult.value(),
         origin,
+        dimensionId,
         displayName,
         resolvedPath
     );

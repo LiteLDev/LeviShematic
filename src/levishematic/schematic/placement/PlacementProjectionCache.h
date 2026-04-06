@@ -13,7 +13,8 @@ public:
         std::vector<render::ProjEntry> const&                               worldEntries;
         std::unordered_map<uint64_t, render::ProjEntry> const&              byPos;
         std::unordered_map<uint64_t, std::vector<render::ProjEntry>> const& bySubChunk;
-        std::unordered_map<uint64_t, verifier::ExpectedBlockSnapshot> const& expectedBlocksByPos;
+        std::unordered_map<util::WorldBlockKey, verifier::ExpectedBlockSnapshot, util::WorldBlockKeyHash> const&
+            expectedBlocksByKey;
     };
 
     [[nodiscard]] View view(PlacementInstance const& placement);
@@ -26,7 +27,8 @@ private:
         std::vector<render::ProjEntry> worldEntries;
         std::unordered_map<uint64_t, render::ProjEntry> byPos;
         std::unordered_map<uint64_t, std::vector<render::ProjEntry>> bySubChunk;
-        std::unordered_map<uint64_t, verifier::ExpectedBlockSnapshot> expectedBlocksByPos;
+        std::unordered_map<util::WorldBlockKey, verifier::ExpectedBlockSnapshot, util::WorldBlockKeyHash>
+            expectedBlocksByKey;
     };
 
     [[nodiscard]] Record const& ensureRecord(PlacementInstance const& placement);

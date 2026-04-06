@@ -8,6 +8,7 @@
 
 #include "mc/client/renderer/block/BlockTessellator.h"
 #include "mc/client/renderer/chunks/RenderChunkBuilder.h"
+#include "mc/world/level/BlockSource.h"
 #include "mc/world/level/block/Block.h"
 
 #include <Windows.h>
@@ -61,7 +62,7 @@ LL_TYPE_INSTANCE_HOOK(
     auto& projection = app::getAppKernel().projection();
     (void)projection.flushRefresh(nullptr);
 
-    tl_currentScene = projection.scene();
+    tl_currentScene = projection.sceneForDimension(static_cast<int>(region.getDimensionId()));
     if (!tl_currentScene || tl_currentScene->empty()) {
         return result;
     }

@@ -16,7 +16,12 @@ void registerSchemLoadCommands(ll::command::CommandHandle& schemCmd) {
                      Command const&      cmd) {
             auto& placementService = app::getAppKernel().placement();
             auto  blockPos         = BlockPos(origin.getExecutePosition(cmd.mVersion, param.pos));
-            auto  result           = placementService.loadSchematic(param.filename, blockPos);
+            auto* dimension        = origin.getDimension();
+            auto  result           = placementService.loadSchematic(
+                param.filename,
+                blockPos,
+                dimension ? static_cast<int>(dimension->getDimensionId()) : 0
+            );
             if (!result) {
                 replyPlacementError(output, "command.loadSchematic", result.error());
                 return;
@@ -40,7 +45,12 @@ void registerSchemLoadCommands(ll::command::CommandHandle& schemCmd) {
                      SchemNamedParam const& param) {
             auto& placementService = app::getAppKernel().placement();
             auto  blockPos         = BlockPos(origin.getWorldPosition());
-            auto  result           = placementService.loadSchematic(param.filename, blockPos);
+            auto* dimension        = origin.getDimension();
+            auto  result           = placementService.loadSchematic(
+                param.filename,
+                blockPos,
+                dimension ? static_cast<int>(dimension->getDimensionId()) : 0
+            );
             if (!result) {
                 replyPlacementError(output, "command.loadSchematic", result.error());
                 return;

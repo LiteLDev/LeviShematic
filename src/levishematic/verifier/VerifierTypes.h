@@ -1,5 +1,7 @@
 #pragma once
 
+#include "levishematic/util/PositionUtils.h"
+
 #include "mc/deps/core/string/HashedString.h"
 #include "mc/world/level/BlockPos.h"
 #include "mc/world/level/block/Block.h"
@@ -40,6 +42,7 @@ struct BlockCompareSpec {
 };
 
 struct ExpectedBlockSnapshot {
+    int                              dimensionId = 0;
     BlockPos                         pos;
     const Block*                     renderBlock = nullptr;
     BlockCompareSpec                 compareSpec;
@@ -50,6 +53,7 @@ struct ExpectedBlockSnapshot {
 enum class VerificationStatus : uint8_t {
     Unknown,
     Matched,
+    MissingBlock,
     PropertyMismatch,
     BlockMismatch,
 };
@@ -57,8 +61,8 @@ enum class VerificationStatus : uint8_t {
 [[nodiscard]] BlockCompareSpec buildCompareSpecFromBlock(Block const& block);
 
 struct VerifierState {
-    std::unordered_map<uint64_t, VerificationStatus> statusByPos;
-    uint64_t                                         revision = 0;
+    std::unordered_map<util::WorldBlockKey, VerificationStatus, util::WorldBlockKeyHash> statusByKey;
+    uint64_t                                                                      revision = 0;
 };
 
 inline constexpr bool isHiddenStatus(VerificationStatus status) {

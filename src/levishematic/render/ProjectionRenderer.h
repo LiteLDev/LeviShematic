@@ -37,10 +37,16 @@ inline constexpr mce::Color kPropertyMismatchProjectionColor(0.95f, 0.82f, 0.28f
 inline constexpr mce::Color kBlockMismatchProjectionColor(0.95f, 0.35f, 0.35f, 0.9f);
 
 struct ProjectionScene {
-    std::unordered_map<uint64_t, std::vector<ProjEntry>> bySubChunk;
-    std::unordered_map<uint64_t, mce::Color>             posColorMap;
+    struct DimensionScene {
+        std::unordered_map<uint64_t, std::vector<ProjEntry>> bySubChunk;
+        std::unordered_map<uint64_t, mce::Color>             posColorMap;
 
-    [[nodiscard]] bool empty() const { return posColorMap.empty(); }
+        [[nodiscard]] bool empty() const { return posColorMap.empty(); }
+    };
+
+    std::unordered_map<int, DimensionScene> byDimension;
+
+    [[nodiscard]] bool empty() const { return byDimension.empty(); }
 };
 
 struct PatchOp {
@@ -67,6 +73,7 @@ public:
     ~ProjectionProjector();
 
     [[nodiscard]] std::shared_ptr<const ProjectionScene> scene() const;
+    [[nodiscard]] std::shared_ptr<const ProjectionScene::DimensionScene> sceneForDimension(int dimensionId) const;
     [[nodiscard]] bool needsRefresh(uint64_t placementsRevision, uint64_t verifierRevision) const;
 
     void rebuild(
@@ -80,6 +87,7 @@ public:
     );
     void triggerRebuild(std::shared_ptr<RenderChunkCoordinator> const& coordinator) const;
     void triggerRebuildForPosition(
+        int                                             dimensionId,
         BlockPos const&                                pos,
         std::shared_ptr<RenderChunkCoordinator> const& coordinator
     ) const;
@@ -100,7 +108,7 @@ private:
     mutable std::mutex                                  mMutex;
 };
 
-extern thread_local std::shared_ptr<const ProjectionScene> tl_currentScene;
+extern thread_local std::shared_ptr<const ProjectionScene::DimensionScene> tl_currentScene;
 extern thread_local bool                                   tl_hasProjection;
 
 } // namespace levishematic::render

@@ -22,8 +22,8 @@ bool ProjectionService::flushRefresh(
     return true;
 }
 
-std::shared_ptr<const render::ProjectionScene> ProjectionService::scene() const {
-    return mProjector.scene();
+std::shared_ptr<const render::ProjectionScene::DimensionScene> ProjectionService::sceneForDimension(int dimensionId) const {
+    return mProjector.sceneForDimension(dimensionId);
 }
 
 void ProjectionService::clear() {

@@ -7,6 +7,8 @@
 #include "levishematic/input/InputHandler.h"
 #include "levishematic/verifier/VerifierService.h"
 
+#include "ll/api/event/ListenerBase.h"
+
 #include <memory>
 
 namespace levishematic::placement {
@@ -46,6 +48,8 @@ public:
 
 private:
     void configureSchematicDirectory();
+    void registerLifecycleListeners();
+    void unregisterLifecycleListeners();
 
     RuntimeContext                                mRuntime;
     std::unique_ptr<editor::EditorState>          mState;
@@ -58,6 +62,9 @@ private:
     std::unique_ptr<ProjectionService>            mProjectionService;
     std::unique_ptr<verifier::VerifierService>    mVerifierService;
     input::InputHandler                           mInputHandler;
+    ll::event::ListenerPtr                        mClientJoinListener;
+    ll::event::ListenerPtr                        mClientExitListener;
+    ll::event::ListenerPtr                        mLevelTickListener;
     bool                                          mInitialized        = false;
     bool                                          mCommandsRegistered = false;
 };

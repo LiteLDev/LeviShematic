@@ -6,7 +6,7 @@ namespace levishematic::placement {
 
 PlacementProjectionCache::View PlacementProjectionCache::view(PlacementInstance const& placement) {
     auto const& record = ensureRecord(placement);
-    return View{record.worldEntries, record.byPos, record.bySubChunk, record.expectedBlocksByPos};
+    return View{record.worldEntries, record.byPos, record.bySubChunk, record.expectedBlocksByKey};
 }
 
 void PlacementProjectionCache::clear() {
@@ -36,7 +36,7 @@ PlacementProjectionCache::Record PlacementProjectionCache::buildRecord(Placement
 
     auto reserveCount = placement.asset->localBlocks.size() + placement.overrides.size();
     record.byPos.reserve(reserveCount);
-    record.expectedBlocksByPos.reserve(reserveCount);
+    record.expectedBlocksByKey.reserve(reserveCount);
 
     auto applyEntry = [&](render::ProjEntry entry) {
         auto posKey          = util::encodePosKey(entry.pos);
@@ -44,8 +44,7 @@ PlacementProjectionCache::Record PlacementProjectionCache::buildRecord(Placement
     };
 
     auto applyExpected = [&](verifier::ExpectedBlockSnapshot entry) {
-        auto posKey = util::encodePosKey(entry.pos);
-        record.expectedBlocksByPos[posKey] = std::move(entry);
+        record.expectedBlocksByKey[util::makeWorldBlockKey(entry.dimensionId, entry.pos)] = std::move(entry);
     };
 
     for (auto const& localEntry : placement.asset->localBlocks) {
@@ -69,6 +68,7 @@ PlacementProjectionCache::Record PlacementProjectionCache::buildRecord(Placement
             render::kDefaultProjectionColor,
         };
         verifier::ExpectedBlockSnapshot expected{
+            .dimensionId = placement.dimensionId,
             .pos         = resolved.pos,
             .renderBlock = resolved.block,
             .compareSpec = localEntry.compareSpec,
@@ -80,7 +80,7 @@ PlacementProjectionCache::Record PlacementProjectionCache::buildRecord(Placement
         if (auto overrideIt = placement.overrides.find(posKey); overrideIt != placement.overrides.end()) {
             if (overrideIt->second.kind == OverrideEntry::Kind::Remove) {
                 record.byPos.erase(posKey);
-                record.expectedBlocksByPos.erase(posKey);
+                record.expectedBlocksByKey.erase(util::makeWorldBlockKey(placement.dimensionId, posKey));
                 continue;
             }
             resolved.block = overrideIt->second.block;
@@ -104,6 +104,7 @@ PlacementProjectionCache::Record PlacementProjectionCache::buildRecord(Placement
             render::kDefaultProjectionColor,
         });
         applyExpected(verifier::ExpectedBlockSnapshot{
+            .dimensionId = placement.dimensionId,
             .pos         = util::decodePosKey(posKey),
             .renderBlock = overrideEntry.block,
             .compareSpec = verifier::buildCompareSpecFromBlock(*overrideEntry.block),

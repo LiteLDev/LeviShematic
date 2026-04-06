@@ -2,10 +2,12 @@
 
 #include "RenderHook.h"
 #include "SelectionHook.h"
+#include "TickHook.h"
 
 namespace levishematic::hook {
 
 void registerRuntimeHooks() {
+    registerTickHooks();
     registerRenderHooks();
     registerSelectionHooks();
 }
@@ -13,6 +15,7 @@ void registerRuntimeHooks() {
 void unregisterRuntimeHooks() {
     unregisterSelectionHooks();
     unregisterRenderHooks();
+    unregisterTickHooks();
 }
 
 } // namespace levishematic::hook

@@ -62,6 +62,7 @@ struct PlacementInstance {
     std::shared_ptr<const SchematicAsset> asset;
     std::string                          name;
     std::filesystem::path                filePath;
+    int                                  dimensionId   = 0;
     BlockPos                             origin{0, 0, 0};
     Rotation                             rotation      = Rotation::NONE;
     Mirror                               mirror        = Mirror::NONE;

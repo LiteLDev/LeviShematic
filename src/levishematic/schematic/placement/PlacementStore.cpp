@@ -10,6 +10,7 @@ namespace levishematic::placement {
 PlacementId PlacementStore::createPlacement(
     std::shared_ptr<const SchematicAsset> asset,
     BlockPos                              origin,
+    int                                   dimensionId,
     std::string                           name,
     std::filesystem::path                 filePath
 ) {
@@ -18,6 +19,7 @@ PlacementId PlacementStore::createPlacement(
     placement.asset    = std::move(asset);
     placement.name     = name.empty() && placement.asset ? placement.asset->defaultName : std::move(name);
     placement.filePath = std::move(filePath);
+    placement.dimensionId = dimensionId;
     placement.origin   = origin;
 
     auto id = placement.id;

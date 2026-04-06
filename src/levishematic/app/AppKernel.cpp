@@ -7,9 +7,11 @@
 #include "levishematic/schematic/placement/SchematicLoader.h"
 #include "levishematic/selection/SelectionExporter.h"
 
-#include "ll/api/service/ServerInfo.h"
 #include "ll/api/event/EventBus.h"
+#include "ll/api/event/client/ClientExitLevelEvent.h"
 #include "ll/api/event/client/ClientJoinLevelEvent.h"
+#include "ll/api/event/world/LevelTickEvent.h"
+#include "ll/api/service/ServerInfo.h"
 
 namespace levishematic::app {
 namespace {
@@ -55,7 +57,7 @@ void AppKernel::initialize() {
 
     configureSchematicDirectory();
     hook::registerRuntimeHooks();
-    // mVerifierService->attachToRuntime();
+    registerLifecycleListeners();
     mInitialized = true;
 }
 
@@ -65,6 +67,7 @@ void AppKernel::shutdown() {
     }
 
     mInputHandler.shutdown();
+    unregisterLifecycleListeners();
     hook::unregisterRuntimeHooks();
     mVerifierService->detachFromRuntime();
     mSelectionService->clearSelection();
@@ -96,6 +99,47 @@ void AppKernel::configureSchematicDirectory() {
     mRuntime.setSchematicDirectory(structurePath);
 }
 
+void AppKernel::registerLifecycleListeners() {
+    auto& bus = ll::event::EventBus::getInstance();
+
+    if (!mClientJoinListener) {
+        mClientJoinListener = bus.emplaceListener<ll::event::client::ClientJoinLevelEvent>(
+            [this](ll::event::client::ClientJoinLevelEvent&) { mVerifierService->handleJoinLevel(); }
+        );
+    }
+
+    if (!mClientExitListener) {
+        mClientExitListener = bus.emplaceListener<ll::event::client::ClientExitLevelEvent>(
+            [this](ll::event::client::ClientExitLevelEvent&) { mVerifierService->handleExitLevel(); }
+        );
+    }
+
+    if (!mLevelTickListener) {
+        mLevelTickListener = bus.emplaceListener<ll::event::world::LevelTickEvent>(
+            [this](ll::event::world::LevelTickEvent&) { mVerifierService->ensureRuntimeBindings(); }
+        );
+    }
+}
+
+void AppKernel::unregisterLifecycleListeners() {
+    auto& bus = ll::event::EventBus::getInstance();
+
+    if (mClientJoinListener) {
+        bus.removeListener<ll::event::client::ClientJoinLevelEvent>(mClientJoinListener);
+        mClientJoinListener.reset();
+    }
+
+    if (mClientExitListener) {
+        bus.removeListener<ll::event::client::ClientExitLevelEvent>(mClientExitListener);
+        mClientExitListener.reset();
+    }
+
+    if (mLevelTickListener) {
+        bus.removeListener<ll::event::world::LevelTickEvent>(mLevelTickListener);
+        mLevelTickListener.reset();
+    }
+}
+
 bool hasAppKernel() {
     return static_cast<bool>(gAppKernel);
 }
@@ -119,13 +163,5 @@ void stop() {
     gAppKernel->shutdown();
     gAppKernel.reset();
 }
-
-static bool reg = [] {
-    using namespace ll::event;
-    EventBus::getInstance().emplaceListener<ClientJoinLevelEvent>([](ClientJoinLevelEvent&) {
-        getAppKernel().verifier().attachToRuntime();
-    });
-    return true;
-}();
 
 } // namespace levishematic::app
