@@ -1,5 +1,6 @@
 #pragma once
 
+#include "levishematic/editor/EditorState.h"
 #include "levishematic/render/ProjectionRenderer.h"
 #include "levishematic/schematic/placement/PlacementStore.h"
 #include "levishematic/verifier/VerifierTypes.h"
@@ -15,6 +16,7 @@ public:
     ProjectionService(
         placement::PlacementState const& placementState,
         verifier::VerifierState const&   verifierState,
+        editor::ViewState const&         viewState,
         render::ProjectionProjector&     projector
     );
 
@@ -27,6 +29,7 @@ public:
 private:
     placement::PlacementState const& mPlacementState;
     verifier::VerifierState const&   mVerifierState;
+    editor::ViewState const&         mViewState;
     render::ProjectionProjector&     mProjector;
 };
 

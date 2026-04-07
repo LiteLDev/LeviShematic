@@ -22,7 +22,7 @@ void VerifierBlockListener::onBlockChanged(
     ::Actor*                       /*blockChangeSource*/
 ) {
     mVerifierService.handleBlockChanged(source, pos, block);
-    getLogger().debug("Block change");
+    // getLogger().debug("Block change");
 }
 
 } // namespace levishematic::verifier_block_listener

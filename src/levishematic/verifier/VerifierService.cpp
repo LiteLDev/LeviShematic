@@ -30,7 +30,6 @@ bool matchesContainerSnapshot(
     BlockSource&               source,
     BlockPos const&            pos
 ) {
-    return true; //暂时不考虑容器对比，所以先直接返回true，保留代码，以备后续
     if (!expected.container.has_value()) {
         return true;
     }
@@ -88,10 +87,12 @@ bool matchesContainerSnapshot(
 VerifierService::VerifierService(
     VerifierState&                   state,
     placement::PlacementState const& placementState,
+    editor::ViewState const&         viewState,
     render::ProjectionProjector&     projector
 )
     : mState(state)
     , mPlacementState(placementState)
+    , mViewState(viewState)
     , mProjector(projector)
     , mPlacementCache(std::make_unique<placement::PlacementProjectionCache>()) {}
 
@@ -109,14 +110,14 @@ void VerifierService::handleBlockChanged(BlockSource& source, BlockPos const& po
     }
 
     updateStatus(dimensionId, pos, evaluateBlock(expectedIt->second, source, block));
-    mProjector.rebuild(mPlacementState, mState);
+    mProjector.rebuild(mPlacementState, mState, mViewState);
     mProjector.triggerRebuildForPosition(dimensionId, pos, resolveCoordinator(source));
 }
 
 void VerifierService::refresh() {
     syncExpectedBlocks();
     clearStatuses();
-    mProjector.rebuild(mPlacementState, mState);
+    mProjector.rebuild(mPlacementState, mState, mViewState);
 }
 
 void VerifierService::refresh(BlockSource& source) {
@@ -145,7 +146,7 @@ void VerifierService::refresh(BlockSource& source) {
         updateStatus(dimensionId, expected.pos, evaluateBlock(expected, source, block));
     }
 
-    mProjector.rebuildAndRefresh(mPlacementState, mState, resolveCoordinator(source));
+    mProjector.rebuildAndRefresh(mPlacementState, mState, mViewState, resolveCoordinator(source));
 }
 
 void VerifierService::handleJoinLevel() {
@@ -179,6 +180,7 @@ void VerifierService::clear() {
     clearStatuses();
     mExpectedBlocksByKey.clear();
     mExpectedPlacementsRevision = 0;
+    mExpectedViewRevision       = 0;
     mPlacementCache->clear();
 }
 
@@ -249,16 +251,18 @@ VerificationStatus VerifierService::evaluateBlock(
         }
     }
 
-    if (expected.compareSpec.compareContainer && expected.blockEntity.has_value()
-        && !matchesContainerSnapshot(*expected.blockEntity, source, expected.pos)) {
-        return VerificationStatus::PropertyMismatch;
-    }
+    // 暂时不考虑容器对比，所以先注释，保留代码，以备后续
+    // if (expected.compareSpec.compareContainer && expected.blockEntity.has_value()
+    //     && !matchesContainerSnapshot(*expected.blockEntity, source, expected.pos)) {
+    //     return VerificationStatus::PropertyMismatch;
+    // }
 
     return VerificationStatus::Matched;
 }
 
 void VerifierService::syncExpectedBlocks() {
-    if (mExpectedPlacementsRevision == mPlacementState.revision) {
+    if (mExpectedPlacementsRevision == mPlacementState.revision
+        && mExpectedViewRevision == mViewState.revision) {
         return;
     }
 
@@ -276,11 +280,28 @@ void VerifierService::syncExpectedBlocks() {
 
         auto projection = mPlacementCache->view(placement);
         for (auto const& [worldKey, expected] : projection.expectedBlocksByKey) {
+            if (!mViewState.layerRange.contains(expected.pos.y)) {
+                continue;
+            }
             mExpectedBlocksByKey[worldKey] = expected;
         }
     }
 
     mExpectedPlacementsRevision = mPlacementState.revision;
+    mExpectedViewRevision       = mViewState.revision;
+
+    bool removedAnyStatus = false;
+    for (auto it = mState.statusByKey.begin(); it != mState.statusByKey.end();) {
+        if (!mExpectedBlocksByKey.contains(it->first)) {
+            it = mState.statusByKey.erase(it);
+            removedAnyStatus = true;
+            continue;
+        }
+        ++it;
+    }
+    if (removedAnyStatus) {
+        ++mState.revision;
+    }
 }
 
 void VerifierService::clearStatuses() {

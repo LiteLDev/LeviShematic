@@ -317,6 +317,12 @@ void registerSchemPlacementCommands(ll::command::CommandHandle& schemCmd) {
         help += "  /schem selection clear - Clear selection\n";
         help += "  /schem selection mode - Toggle selection mode\n";
         help += "  /schem selection info - Show selection info\n";
+        help += "  /schem view y min <value> - Set minimum visible Y and enable filtering\n";
+        help += "  /schem view y max <value> - Set maximum visible Y and enable filtering\n";
+        help += "  /schem view y range <min> <max> - Set visible Y range and enable filtering\n";
+        help += "  /schem view y enable - Enable Y range filtering\n";
+        help += "  /schem view y disable - Disable Y range filtering\n";
+        help += "  /schem view y info - Show Y range filter state\n";
         output.success(help);
     });
 }

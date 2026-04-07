@@ -71,8 +71,18 @@ struct SchemBlockSetSimpleParam {
     CommandBlockName     blockName;
 };
 
+struct SchemViewYValueParam {
+    int value;
+};
+
+struct SchemViewYRangeParam {
+    int minY;
+    int maxY;
+};
+
 std::shared_ptr<RenderChunkCoordinator> getCoordinator(const CommandOrigin& origin);
 ll::command::CommandHandle&             getOrCreateSchemCommand(bool isClient);
+void                                    refreshProjectionStateForOrigin(const CommandOrigin& origin);
 void                                    logPlacementCommandFailure(
                                        std::string_view                      operation,
                                        const std::filesystem::path&          file,
@@ -117,19 +127,7 @@ void flushPlacementRefreshAndReply(
     CommandOutput&       output,
     ReplyFn&&            reply
 ) {
-    if (app::hasAppKernel()) {
-        auto& kernel = app::getAppKernel();
-        auto  coordinator = getCoordinator(origin);
-
-        auto* dimension = origin.getDimension();
-        if (dimension) {
-            kernel.verifier().refresh(dimension->getBlockSourceFromMainChunkSource());
-        } else {
-            kernel.verifier().refresh();
-        }
-
-        (void)kernel.projection().flushRefresh(coordinator);
-    }
+    refreshProjectionStateForOrigin(origin);
     reply(output);
 }
 
@@ -137,5 +135,6 @@ void registerSchemLoadCommands(ll::command::CommandHandle& schemCmd);
 void registerSchemPlacementCommands(ll::command::CommandHandle& schemCmd);
 void registerSchemSelectionCommands(ll::command::CommandHandle& schemCmd);
 void registerSchemTransformCommands(ll::command::CommandHandle& schemCmd);
+void registerSchemViewCommands(ll::command::CommandHandle& schemCmd);
 
 } // namespace levishematic::command

@@ -38,6 +38,24 @@ ll::command::CommandHandle& getOrCreateSchemCommand(bool isClient) {
         .getOrCreateCommand("schem", "LeviSchematic commands");
 }
 
+void refreshProjectionStateForOrigin(const CommandOrigin& origin) {
+    if (!app::hasAppKernel()) {
+        return;
+    }
+
+    auto& kernel      = app::getAppKernel();
+    auto  coordinator = getCoordinator(origin);
+
+    auto* dimension = origin.getDimension();
+    if (dimension) {
+        kernel.verifier().refresh(dimension->getBlockSourceFromMainChunkSource());
+    } else {
+        kernel.verifier().refresh();
+    }
+
+    (void)kernel.projection().flushRefresh(coordinator);
+}
+
 void logPlacementCommandFailure(
     std::string_view                      operation,
     const std::filesystem::path&          file,

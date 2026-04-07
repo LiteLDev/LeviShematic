@@ -131,7 +131,7 @@ Result<RemovedPlacementInfo, PlacementError> PlacementService::removePlacement(p
     }
 
     RemovedPlacementInfo removed{placement->id, placement->name};
-    mPlacementStore.remove(id);
+    (void)mPlacementStore.remove(id);
     return Result<RemovedPlacementInfo, PlacementError>::success(std::move(removed));
 }
 
@@ -153,7 +153,7 @@ PlacementMutationResult PlacementService::togglePlacementEnabled(placement::Plac
         return PlacementMutationResult::failure(placement.error());
     }
 
-    mPlacementStore.toggleEnabled(id);
+    (void)mPlacementStore.toggleEnabled(id);
     return successMutation(mPlacementStore.get(id));
 }
 
@@ -163,7 +163,7 @@ PlacementMutationResult PlacementService::togglePlacementRender(placement::Place
         return PlacementMutationResult::failure(placement.error());
     }
 
-    mPlacementStore.toggleRender(id);
+    (void)mPlacementStore.toggleRender(id);
     return successMutation(mPlacementStore.get(id));
 }
 
@@ -173,7 +173,7 @@ PlacementMutationResult PlacementService::movePlacement(placement::PlacementId i
         return PlacementMutationResult::failure(placement.error());
     }
 
-    mPlacementStore.move(id, dx, dy, dz);
+    (void)mPlacementStore.move(id, dx, dy, dz);
     return successMutation(mPlacementStore.get(id));
 }
 
@@ -183,7 +183,7 @@ PlacementMutationResult PlacementService::setPlacementOrigin(placement::Placemen
         return PlacementMutationResult::failure(placement.error());
     }
 
-    mPlacementStore.setOrigin(id, origin);
+    (void)mPlacementStore.setOrigin(id, origin);
     return successMutation(mPlacementStore.get(id));
 }
 
@@ -196,7 +196,7 @@ PlacementMutationResult PlacementService::rotatePlacement(
         return PlacementMutationResult::failure(placement.error());
     }
 
-    mPlacementStore.rotate(id, delta);
+    (void)mPlacementStore.rotate(id, delta);
     return successMutation(mPlacementStore.get(id));
 }
 
@@ -209,7 +209,7 @@ PlacementMutationResult PlacementService::setPlacementMirror(
         return PlacementMutationResult::failure(placement.error());
     }
 
-    mPlacementStore.setMirror(id, mirror);
+    (void)mPlacementStore.setMirror(id, mirror);
     return successMutation(mPlacementStore.get(id));
 }
 
@@ -219,7 +219,7 @@ PlacementMutationResult PlacementService::resetPlacementTransform(placement::Pla
         return PlacementMutationResult::failure(placement.error());
     }
 
-    mPlacementStore.resetTransform(id);
+    (void)mPlacementStore.resetTransform(id);
     return successMutation(mPlacementStore.get(id));
 }
 
@@ -241,7 +241,7 @@ PlacementMutationResult PlacementService::patchPlacementBlock(
         });
     }
 
-    if (!mPlacementStore.patchBlock(id, worldPos, op)) {
+    if (!(mPlacementStore.patchBlock(id, worldPos, op))) {
         return PlacementMutationResult::failure({
             .code        = op.kind == render::PatchOp::Kind::ClearOverride
                 ? PlacementError::Code::OverrideNotFound

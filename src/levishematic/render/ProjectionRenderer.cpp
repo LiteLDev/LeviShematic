@@ -1,5 +1,6 @@
 #include "ProjectionRenderer.h"
 
+#include "levishematic/editor/EditorState.h"
 #include "levishematic/schematic/placement/PlacementProjectionCache.h"
 #include "levishematic/schematic/placement/PlacementStore.h"
 
@@ -76,6 +77,7 @@ void triggerRebuildForScene(
 std::shared_ptr<const ProjectionScene> buildScene(
     placement::PlacementState const&     state,
     verifier::VerifierState const&       verifierState,
+    editor::ViewState const&             viewState,
     placement::PlacementProjectionCache& placementCache
 ) {
     auto next = std::make_shared<ProjectionScene>();
@@ -94,12 +96,16 @@ std::shared_ptr<const ProjectionScene> buildScene(
 
         auto projection      = placementCache.view(placement);
         auto& entriesByPos   = entriesByDimension[placement.dimensionId];
-        auto& dimensionScene = next->byDimension[placement.dimensionId];
         for (auto const& [worldKey, expected] : projection.expectedBlocksByKey) {
+            if (!viewState.layerRange.contains(expected.pos.y)) {
+                continue;
+            }
+
             auto statusIt = verifierState.statusByKey.find(worldKey);
             auto status = statusIt == verifierState.statusByKey.end()
                 ? verifier::VerificationStatus::Unknown
                 : statusIt->second;
+            auto& dimensionScene = next->byDimension[placement.dimensionId];
             if (verifier::isHiddenStatus(status)) {
                 entriesByPos.erase(worldKey.posKey);
                 dimensionScene.posColorMap.erase(worldKey.posKey);
@@ -157,24 +163,26 @@ std::shared_ptr<const ProjectionScene::DimensionScene> ProjectionProjector::scen
     return std::shared_ptr<const ProjectionScene::DimensionScene>(current, &it->second);
 }
 
-bool ProjectionProjector::needsRefresh(uint64_t placementsRevision, uint64_t verifierRevision) const {
+bool ProjectionProjector::needsRefresh(uint64_t placementsRevision, uint64_t verifierRevision, uint64_t viewRevision) const {
     std::lock_guard<std::mutex> lock(mMutex);
-    return placementsRevision != mProjectedRevision || verifierRevision != mVerifierRevision;
+    return placementsRevision != mProjectedRevision || verifierRevision != mVerifierRevision || viewRevision != mViewRevision;
 }
 
 void ProjectionProjector::rebuild(
     placement::PlacementState const& state,
-    verifier::VerifierState const&   verifierState
+    verifier::VerifierState const&   verifierState,
+    editor::ViewState const&         viewState
 ) {
-    rebuildLocked(state, verifierState, nullptr, false);
+    rebuildLocked(state, verifierState, viewState, nullptr, false);
 }
 
 void ProjectionProjector::rebuildAndRefresh(
     placement::PlacementState const&               state,
     verifier::VerifierState const&                 verifierState,
+    editor::ViewState const&                       viewState,
     std::shared_ptr<RenderChunkCoordinator> const& coordinator
 ) {
-    rebuildLocked(state, verifierState, coordinator, true);
+    rebuildLocked(state, verifierState, viewState, coordinator, true);
 }
 
 void ProjectionProjector::triggerRebuild(std::shared_ptr<RenderChunkCoordinator> const& coordinator) const {
@@ -207,12 +215,14 @@ void ProjectionProjector::clear() {
     mPlacementCache->clear();
     mProjectedRevision = 0;
     mVerifierRevision  = 0;
+    mViewRevision      = 0;
     mScene.store(std::make_shared<const ProjectionScene>(), std::memory_order_release);
 }
 
 void ProjectionProjector::rebuildLocked(
     placement::PlacementState const&               state,
     verifier::VerifierState const&                 verifierState,
+    editor::ViewState const&                       viewState,
     std::shared_ptr<RenderChunkCoordinator> const& coordinator,
     bool                                           triggerRefresh
 ) {
@@ -221,15 +231,18 @@ void ProjectionProjector::rebuildLocked(
 
     {
         std::lock_guard<std::mutex> lock(mMutex);
-        if (state.revision == mProjectedRevision && verifierState.revision == mVerifierRevision) {
+        if (state.revision == mProjectedRevision
+            && verifierState.revision == mVerifierRevision
+            && viewState.revision == mViewRevision) {
             return;
         }
 
         previousScene = mScene.load(std::memory_order_acquire);
-        currentScene  = buildScene(state, verifierState, *mPlacementCache);
+        currentScene  = buildScene(state, verifierState, viewState, *mPlacementCache);
         mScene.store(currentScene, std::memory_order_release);
         mProjectedRevision = state.revision;
         mVerifierRevision  = verifierState.revision;
+        mViewRevision      = viewState.revision;
     }
 
     if (triggerRefresh) {

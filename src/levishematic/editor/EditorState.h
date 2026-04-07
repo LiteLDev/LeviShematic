@@ -16,6 +16,10 @@ struct LayerRange {
     int  minY    = -64;
     int  maxY    = 320;
     bool enabled = false;
+
+    [[nodiscard]] bool contains(int worldY) const noexcept {
+        return !enabled || (worldY >= minY && worldY <= maxY);
+    }
 };
 
 struct ToolState {

@@ -4,6 +4,7 @@
 #include "levishematic/app/ProjectionService.h"
 #include "levishematic/app/RuntimeContext.h"
 #include "levishematic/app/SelectionService.h"
+#include "levishematic/app/ViewService.h"
 #include "levishematic/input/InputHandler.h"
 #include "levishematic/verifier/VerifierService.h"
 
@@ -40,6 +41,8 @@ public:
     [[nodiscard]] PlacementService const&  placement() const { return *mPlacementService; }
     [[nodiscard]] SelectionService&        selection() { return *mSelectionService; }
     [[nodiscard]] SelectionService const&  selection() const { return *mSelectionService; }
+    [[nodiscard]] ViewService&             view() { return *mViewService; }
+    [[nodiscard]] ViewService const&       view() const { return *mViewService; }
     [[nodiscard]] ProjectionService&       projection() { return *mProjectionService; }
     [[nodiscard]] ProjectionService const& projection() const { return *mProjectionService; }
     [[nodiscard]] verifier::VerifierService& verifier() { return *mVerifierService; }
@@ -59,6 +62,7 @@ private:
     std::unique_ptr<render::ProjectionProjector>  mProjector;
     std::unique_ptr<PlacementService>             mPlacementService;
     std::unique_ptr<SelectionService>             mSelectionService;
+    std::unique_ptr<ViewService>                  mViewService;
     std::unique_ptr<ProjectionService>            mProjectionService;
     std::unique_ptr<verifier::VerifierService>    mVerifierService;
     input::InputHandler                           mInputHandler;

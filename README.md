@@ -29,6 +29,7 @@ It lets players load saved structures into the world as translucent projections,
 
 - Renders projected blocks as translucent ghost blocks in the world
 - Refreshes projection chunks after placement edits
+- Supports a global visible Y range filter for projection display
 - Tracks expected blocks from loaded placements
 - Compares projected blocks with actual world blocks
 - Uses different projection colors for mismatched block types and mismatched block properties
@@ -123,6 +124,27 @@ Example:
 /schem block clear 120 64 90
 ```
 
+### View Range Commands
+
+| Command | Purpose | Usage Notes |
+|------|------|------|
+| `/schem view y min <value>` | Sets the minimum visible Y value and enables the filter. | Uses world Y coordinates. Blocks below this Y value are hidden. |
+| `/schem view y max <value>` | Sets the maximum visible Y value and enables the filter. | Uses world Y coordinates. Blocks above this Y value are hidden. |
+| `/schem view y range <min> <max>` | Sets the full visible Y range and enables the filter. | The visible range is inclusive: `min <= y <= max`. |
+| `/schem view y enable` | Re-enables the saved Y range filter. | Keeps the previously stored `min` and `max` values. |
+| `/schem view y disable` | Disables Y range filtering. | Does not clear the stored range values. |
+| `/schem view y info` | Shows the current Y range filter state. | Displays whether the filter is enabled and the current `min` and `max` values. |
+
+Examples:
+
+```text
+/schem view y range 64 96
+/schem view y min 80
+/schem view y max 120
+/schem view y info
+/schem view y disable
+```
+
 ### Selection Commands
 
 | Command | Purpose | Usage Notes |
@@ -156,4 +178,5 @@ When selection mode is enabled, the source code also supports in-world corner pi
 
 - The project works with `.mcstructure` files only.
 - The runtime creates and uses a `schematics` directory for loading and saving structure files.
+- The Y range filter is global to the current projection view, not per placement.
 - Many commands require a currently selected placement. If nothing is selected, load a schematic first or use `/schem select <id>`.

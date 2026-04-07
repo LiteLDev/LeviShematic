@@ -21,6 +21,10 @@ class PlacementProjectionCache;
 struct PlacementState;
 }
 
+namespace levishematic::editor {
+struct ViewState;
+}
+
 namespace levishematic::render {
 
 using PlacementProjectionId = uint32_t;
@@ -74,15 +78,17 @@ public:
 
     [[nodiscard]] std::shared_ptr<const ProjectionScene> scene() const;
     [[nodiscard]] std::shared_ptr<const ProjectionScene::DimensionScene> sceneForDimension(int dimensionId) const;
-    [[nodiscard]] bool needsRefresh(uint64_t placementsRevision, uint64_t verifierRevision) const;
+    [[nodiscard]] bool needsRefresh(uint64_t placementsRevision, uint64_t verifierRevision, uint64_t viewRevision) const;
 
     void rebuild(
         placement::PlacementState const& state,
-        verifier::VerifierState const&   verifierState
+        verifier::VerifierState const&   verifierState,
+        editor::ViewState const&         viewState
     );
     void rebuildAndRefresh(
         placement::PlacementState const&               state,
         verifier::VerifierState const&                 verifierState,
+        editor::ViewState const&                       viewState,
         std::shared_ptr<RenderChunkCoordinator> const& coordinator
     );
     void triggerRebuild(std::shared_ptr<RenderChunkCoordinator> const& coordinator) const;
@@ -97,6 +103,7 @@ private:
     void rebuildLocked(
         placement::PlacementState const&               state,
         verifier::VerifierState const&                 verifierState,
+        editor::ViewState const&                       viewState,
         std::shared_ptr<RenderChunkCoordinator> const& coordinator,
         bool                                           triggerRefresh
     );
@@ -105,6 +112,7 @@ private:
     std::unique_ptr<placement::PlacementProjectionCache> mPlacementCache;
     uint64_t                                            mProjectedRevision = 0;
     uint64_t                                            mVerifierRevision  = 0;
+    uint64_t                                            mViewRevision      = 0;
     mutable std::mutex                                  mMutex;
 };
 

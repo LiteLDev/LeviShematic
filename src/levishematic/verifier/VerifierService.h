@@ -1,5 +1,6 @@
 #pragma once
 
+#include "levishematic/editor/EditorState.h"
 #include "levishematic/render/ProjectionRenderer.h"
 #include "levishematic/schematic/placement/PlacementProjectionCache.h"
 #include "levishematic/schematic/placement/PlacementStore.h"
@@ -25,6 +26,7 @@ public:
     VerifierService(
         VerifierState&                   state,
         placement::PlacementState const& placementState,
+        editor::ViewState const&         viewState,
         render::ProjectionProjector&     projector
     );
     ~VerifierService();
@@ -56,12 +58,14 @@ private:
 
     VerifierState&                   mState;
     placement::PlacementState const& mPlacementState;
+    editor::ViewState const&         mViewState;
     render::ProjectionProjector&     mProjector;
     std::unique_ptr<levishematic::verifier_block_listener::VerifierBlockListener> mListener;
     std::unique_ptr<placement::PlacementProjectionCache>                         mPlacementCache;
     std::unordered_map<util::WorldBlockKey, ExpectedBlockSnapshot, util::WorldBlockKeyHash> mExpectedBlocksByKey;
     std::unordered_map<int, BlockSource*>                                        mSourcesByDimension;
     uint64_t                                                                     mExpectedPlacementsRevision = 0;
+    uint64_t                                                                     mExpectedViewRevision       = 0;
 };
 
 } // namespace levishematic::verifier

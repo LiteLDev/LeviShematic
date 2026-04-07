@@ -37,14 +37,17 @@ AppKernel::AppKernel()
           mRuntime,
           *mSelectionExporter
       ))
+    , mViewService(std::make_unique<ViewService>(mState->view))
     , mProjectionService(std::make_unique<ProjectionService>(
           mState->placements,
           mState->verifier,
+          mState->view,
           *mProjector
       ))
     , mVerifierService(std::make_unique<verifier::VerifierService>(
           mState->verifier,
           mState->placements,
+          mState->view,
           *mProjector
       )) {}
 

@@ -18,6 +18,7 @@ void registerCommands(bool isClient) {
     registerSchemTransformCommands(schemCmd);
     registerSchemPlacementCommands(schemCmd);
     registerSchemSelectionCommands(schemCmd);
+    registerSchemViewCommands(schemCmd);
 
     getLogger().info("LeviSchematic commands registered");
 }
