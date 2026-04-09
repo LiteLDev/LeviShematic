@@ -29,6 +29,7 @@ public:
     [[nodiscard]] ViewMutationStatus setMinY(int minY);
     [[nodiscard]] ViewMutationStatus setMaxY(int maxY);
     [[nodiscard]] ViewMutationStatus setRange(int minY, int maxY);
+    [[nodiscard]] bool               adjustMaxYBy(int delta);
     [[nodiscard]] bool               enableLayerRange();
     [[nodiscard]] bool               disableLayerRange();
 

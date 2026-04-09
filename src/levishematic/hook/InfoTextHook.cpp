@@ -9,10 +9,12 @@
 #include "mc/client/gui/screens/ScreenView.h"
 #include "mc/client/game/ClientInstance.h"
 #include "mc/client/gui/FontHandle.h"
+#include "mc/client/gui/GuiData.h"
 
 
 namespace levishematic::hook {
 
+//     std::string g_overlayText = "test text";
 // LL_TYPE_INSTANCE_HOOK(
 //     InfoTextHook,
 //     HookPriority::Normal,
@@ -25,12 +27,21 @@ namespace levishematic::hook {
 
 //     MinecraftUIRenderContext& screenContext = reinterpret_cast<MinecraftUIRenderContext&>(uiRenderContext);
 
+//     // 通过 GuiData 获取实际 UI 屏幕尺寸（会随窗口大小变化自动更新）
+//     auto& guiData = *screenContext.mScreenContext.guiData;
+
+//     // float screenWidth  = guiData.mScreenSizeData->clientScreenSize->x;   // UI 坐标系宽度
+//     float screenHeight = guiData.mScreenSizeData->clientScreenSize->y;   // UI 坐标系高度
+
+//     // 左下角：x=2（留一点边距），y = 屏幕高度 - 字体高度 - 边距
+//     constexpr float margin = 4.0f;
+//     constexpr float lineHeight = 9.0f; // MC 默认字体高度约为 9
 
 //     ll::service::getClientInstance()->getFontHandle().mDefaultFont->drawShadow(
 //         screenContext.mScreenContext,
 //         g_overlayText,
-//         2,
-//         screenContext.mScreenContext.ym - 12.0f,
+//         margin,
+//         screenHeight - lineHeight - margin,  // 左下角
 //         mce::Color::WHITE(),
 //         false,
 //         nullptr,

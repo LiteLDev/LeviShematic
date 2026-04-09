@@ -1,5 +1,8 @@
 #include "ViewService.h"
 
+#include <algorithm>
+#include <limits>
+
 namespace levishematic::app {
 
 std::string ViewError::describe() const {
@@ -63,6 +66,27 @@ ViewMutationStatus ViewService::setRange(int minY, int maxY) {
     }
 
     return ok<ViewError>();
+}
+
+bool ViewService::adjustMaxYBy(int delta) {
+    auto& layerRange = mViewState.layerRange;
+
+    auto const proposedMaxY = static_cast<long long>(layerRange.maxY) + static_cast<long long>(delta);
+    auto const targetMaxY   = static_cast<int>(std::clamp(
+        proposedMaxY,
+        static_cast<long long>(layerRange.minY),
+        static_cast<long long>(std::numeric_limits<int>::max())
+    ));
+
+    bool const changed = layerRange.maxY != targetMaxY || !layerRange.enabled;
+    if (!changed) {
+        return false;
+    }
+
+    layerRange.maxY   = targetMaxY;
+    layerRange.enabled = true;
+    touch();
+    return true;
 }
 
 bool ViewService::enableLayerRange() {

@@ -2,6 +2,7 @@
 
 #include "levishematic/command/Command.h"
 #include "levishematic/hook/RuntimeHooks.h"
+#include "levishematic/app/ProjectionRefresh.h"
 #include "levishematic/render/ProjectionRenderer.h"
 #include "levishematic/schematic/placement/PlacementStore.h"
 #include "levishematic/schematic/placement/SchematicLoader.h"
@@ -61,6 +62,14 @@ void AppKernel::initialize() {
     configureSchematicDirectory();
     hook::registerRuntimeHooks();
     registerLifecycleListeners();
+    mInputHandler.initialize({
+        .viewService            = mViewService.get(),
+        .projectionService      = mProjectionService.get(),
+        .verifierService        = mVerifierService.get(),
+        .refreshProjectionState = [] {
+            (void)refreshCurrentClientProjectionState();
+        },
+    });
     mInitialized = true;
 }
 

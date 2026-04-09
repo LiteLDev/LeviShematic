@@ -1,12 +1,9 @@
 #include "levishematic/command/CommandShared.h"
 
 #include "levishematic/LeviShematic.h"
+#include "levishematic/app/ProjectionRefresh.h"
 
 #include "ll/api/command/CommandRegistrar.h"
-#include "ll/api/service/TargetedBedrock.h"
-
-#include "mc/client/game/ClientInstance.h"
-#include "mc/client/renderer/game/LevelRenderer.h"
 #include "mc/world/level/dimension/Dimension.h"
 
 namespace levishematic::command {
@@ -19,18 +16,12 @@ auto& getLogger() {
 } // namespace
 
 std::shared_ptr<RenderChunkCoordinator> getCoordinator(const CommandOrigin& origin) {
-    auto client = ll::service::getClientInstance();
-    if (!client || !client->getLevelRenderer()) {
-        return nullptr;
-    }
-
     auto* dimension = origin.getDimension();
     if (!dimension) {
         return nullptr;
     }
 
-    auto dimId = dimension->getDimensionId();
-    return client->getLevelRenderer()->mRenderChunkCoordinators->at(dimId);
+    return app::resolveCoordinatorForDimension(dimension->getDimensionId());
 }
 
 ll::command::CommandHandle& getOrCreateSchemCommand(bool isClient) {
@@ -39,21 +30,7 @@ ll::command::CommandHandle& getOrCreateSchemCommand(bool isClient) {
 }
 
 void refreshProjectionStateForOrigin(const CommandOrigin& origin) {
-    if (!app::hasAppKernel()) {
-        return;
-    }
-
-    auto& kernel      = app::getAppKernel();
-    auto  coordinator = getCoordinator(origin);
-
-    auto* dimension = origin.getDimension();
-    if (dimension) {
-        kernel.verifier().refresh(dimension->getBlockSourceFromMainChunkSource());
-    } else {
-        kernel.verifier().refresh();
-    }
-
-    (void)kernel.projection().flushRefresh(coordinator);
+    (void)app::refreshProjectionStateForDimension(origin.getDimension());
 }
 
 void logPlacementCommandFailure(

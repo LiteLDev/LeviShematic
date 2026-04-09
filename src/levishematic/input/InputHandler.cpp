@@ -1,31 +1,171 @@
 #include "InputHandler.h"
 
-namespace levishematic::input {
+#include "levishematic/app/ViewService.h"
 
-void InputHandler::bind(ActionCallback callback) {
-    mActionCallback = std::move(callback);
+#include "ll/api/input/KeyRegistry.h"
+#include "ll/api/mod/NativeMod.h"
+
+#include <Windows.h>
+
+#include <array>
+#include <utility>
+
+namespace levishematic::input {
+namespace {
+
+struct InputRuntimeState {
+    InputHandler* activeHandler     = nullptr;
+    bool          bindingsRegistered = false;
+};
+
+InputRuntimeState& runtimeState() {
+    static InputRuntimeState state;
+    return state;
 }
 
-void InputHandler::dispatch(Action action) const {
-    if (mActionCallback) {
-        mActionCallback(action);
+void dispatchRegisteredAction(InputActionId action, ::FocusImpact focusImpact, ::IClientInstance& client) {
+    auto* handler = runtimeState().activeHandler;
+    if (!handler) {
+        return;
     }
+
+    handler->execute(action, focusImpact, client);
+}
+
+std::array<InputHandler::InputBindingSpec, 2> const& getBindingSpecs() {
+    static const std::array<InputHandler::InputBindingSpec, 2> specs{{
+        InputHandler::InputBindingSpec{
+            .id             = InputActionId::IncreaseViewMaxY,
+            .registryName   = "levishematic.view.y.max.increment",
+            .defaultKeyCodes = {VK_PRIOR},
+            .allowRemap     = true,
+            .phase          = TriggerPhase::ButtonDown,
+            .executor       = [](InputExecutionContext& context, ::FocusImpact, ::IClientInstance&) {
+                if (!context.viewService) {
+                    return;
+                }
+
+                if (!context.viewService->adjustMaxYBy(1)) {
+                    return;
+                }
+
+                if (context.refreshProjectionState) {
+                    context.refreshProjectionState();
+                }
+            },
+        },
+        InputHandler::InputBindingSpec{
+            .id             = InputActionId::DecreaseViewMaxY,
+            .registryName   = "levishematic.view.y.max.decrement",
+            .defaultKeyCodes = {VK_NEXT},
+            .allowRemap     = true,
+            .phase          = TriggerPhase::ButtonDown,
+            .executor       = [](InputExecutionContext& context, ::FocusImpact, ::IClientInstance&) {
+                if (!context.viewService) {
+                    return;
+                }
+
+                if (!context.viewService->adjustMaxYBy(-1)) {
+                    return;
+                }
+
+                if (context.refreshProjectionState) {
+                    context.refreshProjectionState();
+                }
+            },
+        },
+    }};
+
+    return specs;
+}
+
+InputHandler::InputBindingSpec const* findBindingSpec(InputActionId action) {
+    auto const& specs = getBindingSpecs();
+    for (auto const& spec : specs) {
+        if (spec.id == action) {
+            return &spec;
+        }
+    }
+
+    return nullptr;
+}
+
+void ensureBindingsRegistered() {
+    auto& state = runtimeState();
+    if (state.bindingsRegistered) {
+        return;
+    }
+
+    auto& registry = ll::input::KeyRegistry::getInstance();
+    for (auto const& spec : getBindingSpecs()) {
+        auto& keyHandle = registry.getOrCreateKey(
+            spec.registryName,
+            spec.defaultKeyCodes,
+            spec.allowRemap,
+            ll::mod::NativeMod::current()
+        );
+
+        if (spec.phase == TriggerPhase::ButtonDown) {
+            keyHandle.registerButtonDownHandler(
+                [action = spec.id](::FocusImpact focusImpact, ::IClientInstance& client) {
+                    dispatchRegisteredAction(action, focusImpact, client);
+                }
+            );
+            continue;
+        }
+
+        keyHandle.registerButtonUpHandler(
+            [action = spec.id](::FocusImpact focusImpact, ::IClientInstance& client) {
+                dispatchRegisteredAction(action, focusImpact, client);
+            }
+        );
+    }
+
+    state.bindingsRegistered = true;
+}
+
+} // namespace
+
+bool InputExecutionContext::isValid() const {
+    return viewService && projectionService && verifierService && static_cast<bool>(refreshProjectionState);
+}
+
+void InputHandler::initialize(InputExecutionContext context) {
+    ensureBindingsRegistered();
+    mContext                = std::move(context);
+    runtimeState().activeHandler = this;
 }
 
 void InputHandler::shutdown() {
-    mActionCallback = nullptr;
+    if (runtimeState().activeHandler == this) {
+        runtimeState().activeHandler = nullptr;
+    }
+
+    mContext = {};
 }
 
-const char* actionToString(Action action) {
+bool InputHandler::isInitialized() const {
+    return mContext.isValid();
+}
+
+void InputHandler::execute(InputActionId action, ::FocusImpact focusImpact, ::IClientInstance& client) const {
+    if (!mContext.isValid()) {
+        return;
+    }
+
+    auto const* spec = findBindingSpec(action);
+    if (!spec || !spec->executor) {
+        return;
+    }
+
+    spec->executor(const_cast<InputExecutionContext&>(mContext), focusImpact, client);
+}
+
+const char* inputActionToString(InputActionId action) {
     switch (action) {
-    case Action::ToggleRender:             return "toggle_render";
-    case Action::RotateClockwise90:        return "rotate_cw90";
-    case Action::RotateCounterClockwise90: return "rotate_ccw90";
-    case Action::MirrorX:                  return "mirror_x";
-    case Action::MirrorZ:                  return "mirror_z";
-    case Action::ToggleSelectionMode:      return "toggle_selection_mode";
-    case Action::None:
-    default:                               return "none";
+    case InputActionId::IncreaseViewMaxY: return "increase_view_max_y";
+    case InputActionId::DecreaseViewMaxY: return "decrease_view_max_y";
+    default:                              return "unknown";
     }
 }
 

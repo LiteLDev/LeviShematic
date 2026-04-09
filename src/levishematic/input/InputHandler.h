@@ -1,31 +1,64 @@
 #pragma once
 
 #include <functional>
+#include <string_view>
+#include <vector>
+
+#include "mc/client/game/IClientInstance.h"
+#include "mc/deps/input/enums/FocusImpact.h"
+
+namespace levishematic::app {
+class ProjectionService;
+class ViewService;
+}
+
+namespace levishematic::verifier {
+class VerifierService;
+}
 
 namespace levishematic::input {
 
-enum class Action {
-    ToggleRender,
-    RotateClockwise90,
-    RotateCounterClockwise90,
-    MirrorX,
-    MirrorZ,
-    ToggleSelectionMode,
-    None,
+enum class InputActionId {
+    IncreaseViewMaxY,
+    DecreaseViewMaxY,
+};
+
+enum class TriggerPhase {
+    ButtonDown,
+    ButtonUp,
+};
+
+struct InputExecutionContext {
+    app::ViewService*          viewService       = nullptr;
+    app::ProjectionService*    projectionService = nullptr;
+    verifier::VerifierService* verifierService   = nullptr;
+    std::function<void()>      refreshProjectionState;
+
+    [[nodiscard]] bool isValid() const;
 };
 
 class InputHandler {
 public:
-    using ActionCallback = std::function<void(Action)>;
+    using InputExecutor = std::function<void(InputExecutionContext&, ::FocusImpact, ::IClientInstance&)>;
 
-    void bind(ActionCallback callback);
-    void dispatch(Action action) const;
+    struct InputBindingSpec {
+        InputActionId            id;
+        std::string_view         registryName;
+        std::vector<int>         defaultKeyCodes;
+        bool                     allowRemap = true;
+        TriggerPhase             phase      = TriggerPhase::ButtonDown;
+        InputExecutor            executor;
+    };
+
+    void initialize(InputExecutionContext context);
     void shutdown();
+    [[nodiscard]] bool isInitialized() const;
+    void               execute(InputActionId action, ::FocusImpact focusImpact, ::IClientInstance& client) const;
 
 private:
-    ActionCallback mActionCallback;
+    InputExecutionContext mContext;
 };
 
-const char* actionToString(Action action);
+const char* inputActionToString(InputActionId action);
 
 } // namespace levishematic::input
