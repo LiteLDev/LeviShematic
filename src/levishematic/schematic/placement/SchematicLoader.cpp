@@ -4,9 +4,9 @@
 
 #include "ll/api/service/Bedrock.h"
 
-#include "mc/nbt/CompoundTag.h"
-#include "mc/nbt/CompoundTagVariant.h"
-#include "mc/nbt/ListTag.h"
+#include "mc/deps/nbt/CompoundTag.h"
+#include "mc/deps/nbt/CompoundTagVariant.h"
+#include "mc/deps/nbt/ListTag.h"
 #include "mc/world/level/Level.h"
 #include "mc/world/level/levelgen/structure/StructureBlockPalette.h"
 #include "mc/world/level/levelgen/structure/StructureTemplate.h"

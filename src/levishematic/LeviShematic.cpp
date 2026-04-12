@@ -14,12 +14,12 @@ LeviShematic& LeviShematic::getInstance() {
 
 bool LeviShematic::load() {
     getSelf().getLogger().debug("Loading...");
+    app::load();
     return true;
 }
 
 bool LeviShematic::enable() {
     getSelf().getLogger().debug("Enabling...");
-    app::start();
     return true;
 }
 

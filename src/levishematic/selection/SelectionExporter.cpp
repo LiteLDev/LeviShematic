@@ -6,7 +6,7 @@
 #include "ll/api/io/FileUtils.h"
 #include "ll/api/service/Bedrock.h"
 
-#include "mc/nbt/CompoundTag.h"
+#include "mc/deps/nbt/CompoundTag.h"
 #include "mc/world/level/Level.h"
 #include "mc/world/level/dimension/Dimension.h"
 #include "mc/world/level/levelgen/structure/StructureSettings.h"

@@ -3,6 +3,7 @@
 #include "levishematic/command/Command.h"
 #include "levishematic/hook/RuntimeHooks.h"
 #include "levishematic/app/ProjectionRefresh.h"
+#include "levishematic/input/InputHandler.h"
 #include "levishematic/render/ProjectionRenderer.h"
 #include "levishematic/schematic/placement/PlacementStore.h"
 #include "levishematic/schematic/placement/SchematicLoader.h"
@@ -11,7 +12,7 @@
 #include "ll/api/event/EventBus.h"
 #include "ll/api/event/client/ClientExitLevelEvent.h"
 #include "ll/api/event/client/ClientJoinLevelEvent.h"
-#include "ll/api/event/world/LevelTickEvent.h"
+#include "ll/api/event/world/ServerLevelTickEvent.h"
 #include "ll/api/service/ServerInfo.h"
 
 namespace levishematic::app {
@@ -38,6 +39,10 @@ AppKernel::AppKernel()
           mRuntime,
           *mSelectionExporter
       ))
+    , mInfoOverlayService(std::make_unique<InfoOverlayService>(
+          *mPlacementService,
+          *mSelectionService
+      ))
     , mViewService(std::make_unique<ViewService>(mState->view))
     , mProjectionService(std::make_unique<ProjectionService>(
           mState->placements,
@@ -50,7 +55,17 @@ AppKernel::AppKernel()
           mState->placements,
           mState->view,
           *mProjector
-      )) {}
+      )) {
+        mInputHandler = input::InputHandler();
+        mInputHandler.initialize({
+            .viewService            = mViewService.get(),
+            .projectionService      = mProjectionService.get(),
+            .verifierService        = mVerifierService.get(),
+            .refreshProjectionState = [] {
+                (void)refreshCurrentClientProjectionState();
+            },
+        });
+    }
 
 AppKernel::~AppKernel() = default;
 
@@ -62,14 +77,6 @@ void AppKernel::initialize() {
     configureSchematicDirectory();
     hook::registerRuntimeHooks();
     registerLifecycleListeners();
-    mInputHandler.initialize({
-        .viewService            = mViewService.get(),
-        .projectionService      = mProjectionService.get(),
-        .verifierService        = mVerifierService.get(),
-        .refreshProjectionState = [] {
-            (void)refreshCurrentClientProjectionState();
-        },
-    });
     mInitialized = true;
 }
 
@@ -127,8 +134,8 @@ void AppKernel::registerLifecycleListeners() {
     }
 
     if (!mLevelTickListener) {
-        mLevelTickListener = bus.emplaceListener<ll::event::world::LevelTickEvent>(
-            [this](ll::event::world::LevelTickEvent&) { mVerifierService->ensureRuntimeBindings(); }
+        mLevelTickListener = bus.emplaceListener<ll::event::world::ServerLevelTickEvent>(
+            [this](ll::event::world::ServerLevelTickEvent&) { mVerifierService->ensureRuntimeBindings(); }
         );
     }
 }
@@ -147,7 +154,7 @@ void AppKernel::unregisterLifecycleListeners() {
     }
 
     if (mLevelTickListener) {
-        bus.removeListener<ll::event::world::LevelTickEvent>(mLevelTickListener);
+        bus.removeListener<ll::event::world::ServerLevelTickEvent>(mLevelTickListener);
         mLevelTickListener.reset();
     }
 }
@@ -160,10 +167,13 @@ AppKernel& getAppKernel() {
     return *gAppKernel;
 }
 
-void start() {
+void load() {
     if (!gAppKernel) {
         gAppKernel = std::make_unique<AppKernel>();
     }
+}
+
+void start() {
     gAppKernel->initialize();
 }
 

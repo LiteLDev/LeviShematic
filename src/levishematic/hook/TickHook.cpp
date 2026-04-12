@@ -1,20 +1,24 @@
 #include "TickHook.h"
 
 #include "levishematic/app/AppKernel.h"
+#include "levishematic/LeviShematic.h"
 
 #include "ll/api/memory/Hook.h"
 #include "ll/api/service/TargetedBedrock.h"
 
+#include "mc/client/game/ClientInstance.h"
+#include "mc/client/gui/Font.h"
+#include "mc/client/gui/FontHandle.h"
+#include "mc/client/gui/GuiData.h"
+#include "mc/client/gui/screens/InGamePlayScreen.h"
+#include "mc/client/gui/screens/ScreenContext.h"
 #include "mc/client/player/LocalPlayer.h"
 #include "mc/scripting/ServerScriptManager.h"
 #include "mc/server/ServerInstance.h"
-#include "mc/client/gui/screens/InGamePlayScreen.h"
+#include "mc/client/gui/screens/ScreenView.h"
+#include "mc/client/renderer/screen/MinecraftUIRenderContext.h"
 
-#include "mc/client/gui/Font.h"
-#include "mc/client/gui/screens/ScreenContext.h"
-#include "mc/client/game/ClientInstance.h"
-#include "mc/client/gui/FontHandle.h"
-#include "mc/client/gui/GuiData.h"
+#include <vector>
 
 namespace levishematic::hook {
 
@@ -22,9 +26,11 @@ namespace {
 
 bool gTickHooksRegistered = false;
 
-std::string g_overlayText = "test text";
-
+    auto& getLogger() {
+    return levishematic::LeviShematic::getInstance().getSelf().getLogger();
 }
+
+} // namespace
 
 LL_AUTO_TYPE_INSTANCE_HOOK(
     ServerStartCommandRegistration,
@@ -35,6 +41,10 @@ LL_AUTO_TYPE_INSTANCE_HOOK(
     ::ServerInstance& ins
 ) {
     auto res = origin(ins);
+    if(!app::hasAppKernel()) {
+        app::load();
+    }
+    app::start();
 
     if (app::hasAppKernel()) {
         app::getAppKernel().onServerThreadStarted();
@@ -43,37 +53,61 @@ LL_AUTO_TYPE_INSTANCE_HOOK(
     return res;
 }
 
+LL_AUTO_TYPE_INSTANCE_HOOK(
+    ServerStop,
+    HookPriority::Highest,
+    ServerInstance,
+    &ServerInstance::startLeaveGame,
+    void
+) {
+    origin();
+    app::stop();
+}
+
 LL_TYPE_INSTANCE_HOOK(
     RenderLevelHook,
     HookPriority::Highest,
-    InGamePlayScreen,
-    &InGamePlayScreen::$_renderLevel,
+    ScreenView,
+    &ScreenView::render,
     void,
-    ScreenContext& screenContext,
-    FrameRenderObject const& renderObj
+    ::UIRenderContext& uiRenderContext
 ) {
-    //渲染level，可以把需要频繁渲染检测的放这
-    origin(screenContext, renderObj);
-    // 通过 GuiData 获取实际 UI 屏幕尺寸（会随窗口大小变化自动更新）
-    auto& guiData = screenContext.guiData;
+    origin(uiRenderContext);
+    MinecraftUIRenderContext& screenContext = reinterpret_cast<MinecraftUIRenderContext&>(uiRenderContext);
 
-    // float screenWidth  = guiData.mScreenSizeData->clientScreenSize->x;   // UI 坐标系宽度
-    float screenHeight = guiData->mScreenSizeData->clientScreenSize->y;   // UI 坐标系高度
+    auto client = ll::service::getClientInstance();
+    if (!client) {
+        return;
+    }
 
-    // 左下角：x=2（留一点边距），y = 屏幕高度 - 字体高度 - 边距
-    constexpr float margin = 4.0f;
-    constexpr float lineHeight = 9.0f; // MC 默认字体高度约为 9
+    auto* player = client->getLocalPlayer();
+    if (!player || !app::hasAppKernel()) {
+        return;
+    }
 
-    ll::service::getClientInstance()->getFontHandle().mDefaultFont->drawShadow(
-        screenContext,
-        g_overlayText,
-        margin,
-        screenHeight - lineHeight - margin,  // 左下角
-        mce::Color::WHITE(),
-        false,
-        nullptr,
-        1.0f
-    );
+    auto overlayView = app::getAppKernel().infoOverlay().buildView(*player);
+    if (!overlayView) {
+        return;
+    }
+
+    auto& guiData      = screenContext.mScreenContext.guiData;
+    float screenHeight = guiData->mScreenSizeData->clientScreenSize->y / guiData->getGuiScale();
+
+    constexpr float margin     = 4.0f;
+    constexpr float lineHeight = 9.0f;
+
+    for (size_t i = 0; i < overlayView->lines.size(); ++i) {
+        client->getFontHandle().mDefaultFont->drawShadow(
+            screenContext.mScreenContext,
+            overlayView->lines[i],
+            margin,
+            screenHeight - lineHeight - margin - (lineHeight * i),
+            mce::Color::WHITE(),
+            false,
+            nullptr,
+            1.0f
+        );
+    }
 }
 
 LL_TYPE_INSTANCE_HOOK(
@@ -92,6 +126,7 @@ LL_TYPE_INSTANCE_HOOK(
 
 using TickHookRegistrar = ll::memory::HookRegistrar<
     ServerStartCommandRegistration,
+    RenderLevelHook,
     LocalPlayerFireDimensionChangedHook>;
 
 void registerTickHooks() {

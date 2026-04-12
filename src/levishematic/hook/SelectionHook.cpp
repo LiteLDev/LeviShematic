@@ -252,7 +252,7 @@ LL_TYPE_INSTANCE_HOOK(
         && item.isInstance(VanillaItemNames::Stick(), false)) {
         selectionService.setSelectionCorner2(at);
         getLogger().debug("Selection pos2: {}", at.toString());
-        return InteractionResult{InteractionResult::Result::Success};
+        return InteractionResult{true,false};
     }
     return origin(item, at, face, hit, isFirstEvent);
 }
@@ -261,15 +261,14 @@ LL_TYPE_INSTANCE_HOOK(
     SelectionClickPos1Hook,
     HookPriority::Normal,
     GameMode,
-    &GameMode::_startDestroyBlock,
+    &GameMode::$startDestroyBlock,
     bool,
-    BlockPos const& hitPos,
-    Vec3 const&     vec3,
-    uchar           hitFace,
-    bool&           hasDestroyedBlock
+    BlockPos const& pos,
+    uchar face,
+    bool& hasDestroyedBlock
 ) {
     if (!app::hasAppKernel()) {
-        return origin(hitPos, vec3, hitFace, hasDestroyedBlock);
+        return origin(pos, face, hasDestroyedBlock);
     }
 
     auto& selectionService = app::getAppKernel().selection();
@@ -277,11 +276,11 @@ LL_TYPE_INSTANCE_HOOK(
         this->mPlayer.mInventory->mInventory->getItem(this->mPlayer.mInventory->mSelected);
 
     if (selectionService.isSelectionModeEnabled() && item.isInstance(VanillaItemNames::Stick(), false)) {
-        selectionService.setSelectionCorner1(hitPos);
-        getLogger().debug("Selection pos1: {}", hitPos.toString());
+        selectionService.setSelectionCorner1(pos);
+        getLogger().debug("Selection pos1: {}", pos.toString());
         return false;
     }
-    return origin(hitPos, vec3, hitFace, hasDestroyedBlock);
+    return origin(pos, face, hasDestroyedBlock);
 }
 
 using selectionHook = ll::memory::HookRegistrar<

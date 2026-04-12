@@ -11,8 +11,6 @@
 #include "mc/world/level/BlockSource.h"
 #include "mc/world/level/block/Block.h"
 
-#include <Windows.h>
-
 struct BlockQueueEntry {
     BlockPos     pos;
     const Block* blockInfo;

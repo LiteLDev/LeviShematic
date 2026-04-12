@@ -1,5 +1,6 @@
 #pragma once
 
+#include "levishematic/app/InfoOverlayService.h"
 #include "levishematic/app/PlacementService.h"
 #include "levishematic/app/ProjectionService.h"
 #include "levishematic/app/RuntimeContext.h"
@@ -41,6 +42,8 @@ public:
     [[nodiscard]] PlacementService const&  placement() const { return *mPlacementService; }
     [[nodiscard]] SelectionService&        selection() { return *mSelectionService; }
     [[nodiscard]] SelectionService const&  selection() const { return *mSelectionService; }
+    [[nodiscard]] InfoOverlayService&      infoOverlay() { return *mInfoOverlayService; }
+    [[nodiscard]] InfoOverlayService const& infoOverlay() const { return *mInfoOverlayService; }
     [[nodiscard]] ViewService&             view() { return *mViewService; }
     [[nodiscard]] ViewService const&       view() const { return *mViewService; }
     [[nodiscard]] ProjectionService&       projection() { return *mProjectionService; }
@@ -62,6 +65,7 @@ private:
     std::unique_ptr<render::ProjectionProjector>  mProjector;
     std::unique_ptr<PlacementService>             mPlacementService;
     std::unique_ptr<SelectionService>             mSelectionService;
+    std::unique_ptr<InfoOverlayService>           mInfoOverlayService;
     std::unique_ptr<ViewService>                  mViewService;
     std::unique_ptr<ProjectionService>            mProjectionService;
     std::unique_ptr<verifier::VerifierService>    mVerifierService;
@@ -75,6 +79,7 @@ private:
 
 [[nodiscard]] bool       hasAppKernel();
 [[nodiscard]] AppKernel& getAppKernel();
+void                     load();
 void                     start();
 void                     stop();
 

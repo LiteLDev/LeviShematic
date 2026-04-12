@@ -62,7 +62,7 @@ bool refreshCurrentClientProjectionState() {
     }
 
     return refreshProjectionState(
-        client->getRegion(),
+        &player->getDimension().getBlockSourceFromMainChunkSource(),
         resolveCoordinatorForDimension(static_cast<int>(player->getDimensionId()))
     );
 }

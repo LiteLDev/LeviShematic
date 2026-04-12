@@ -1,6 +1,7 @@
 #include "InputHandler.h"
 
 #include "levishematic/app/ViewService.h"
+#include "levishematic/LeviShematic.h"
 
 #include "ll/api/input/KeyRegistry.h"
 #include "ll/api/mod/NativeMod.h"
@@ -12,6 +13,9 @@
 
 namespace levishematic::input {
 namespace {
+    auto& getLogger() {
+    return levishematic::LeviShematic::getInstance().getSelf().getLogger();
+}
 
 struct InputRuntimeState {
     InputHandler* activeHandler     = nullptr;
@@ -61,6 +65,7 @@ std::array<InputHandler::InputBindingSpec, 2> const& getBindingSpecs() {
             .allowRemap     = true,
             .phase          = TriggerPhase::ButtonDown,
             .executor       = [](InputExecutionContext& context, ::FocusImpact, ::IClientInstance&) {
+                getLogger().debug("down");
                 if (!context.viewService) {
                     return;
                 }
