@@ -1,5 +1,6 @@
 #pragma once
 
+#include "levishematic/render/ProjectionColorResolver.h"
 #include "levishematic/util/PositionUtils.h"
 #include "levishematic/verifier/VerifierTypes.h"
 
@@ -36,9 +37,6 @@ struct ProjEntry {
 };
 
 inline constexpr int        RENDERLAYER_BLEND = 3;
-inline constexpr mce::Color kDefaultProjectionColor(0.75f, 0.85f, 1.0f, 0.85f);
-inline constexpr mce::Color kPropertyMismatchProjectionColor(0.95f, 0.82f, 0.28f, 0.9f);
-inline constexpr mce::Color kBlockMismatchProjectionColor(0.95f, 0.35f, 0.35f, 0.9f);
 
 struct ProjectionScene {
     struct DimensionScene {
@@ -110,6 +108,7 @@ private:
 
     std::atomic<std::shared_ptr<const ProjectionScene>> mScene;
     std::unique_ptr<placement::PlacementProjectionCache> mPlacementCache;
+    ProjectionColorResolver                               mColorResolver;
     uint64_t                                            mProjectedRevision = 0;
     uint64_t                                            mVerifierRevision  = 0;
     uint64_t                                            mViewRevision      = 0;

@@ -11,21 +11,6 @@
 namespace levishematic::render {
 namespace {
 
-mce::Color colorForStatus(verifier::VerificationStatus status) {
-    switch (status) {
-    case verifier::VerificationStatus::Matched:
-    case verifier::VerificationStatus::MissingBlock:
-        return kDefaultProjectionColor;
-    case verifier::VerificationStatus::PropertyMismatch:
-        return kPropertyMismatchProjectionColor;
-    case verifier::VerificationStatus::BlockMismatch:
-        return kBlockMismatchProjectionColor;
-    case verifier::VerificationStatus::Unknown:
-    default:
-        return kDefaultProjectionColor;
-    }
-}
-
 void markSceneSubChunks(
     std::unordered_set<uint64_t>&          dirtyKeys,
     ProjectionScene::DimensionScene const* scene
@@ -75,10 +60,11 @@ void triggerRebuildForScene(
 }
 
 std::shared_ptr<const ProjectionScene> buildScene(
-    placement::PlacementState const&     state,
-    verifier::VerifierState const&       verifierState,
-    editor::ViewState const&             viewState,
-    placement::PlacementProjectionCache& placementCache
+    placement::PlacementState const&      state,
+    verifier::VerifierState const&        verifierState,
+    editor::ViewState const&              viewState,
+    placement::PlacementProjectionCache&  placementCache,
+    ProjectionColorResolver const&        colorResolver
 ) {
     auto next = std::make_shared<ProjectionScene>();
     std::unordered_map<int, std::unordered_map<uint64_t, ProjEntry>> entriesByDimension;
@@ -115,7 +101,7 @@ std::shared_ptr<const ProjectionScene> buildScene(
             ProjEntry entry{
                 .pos   = expected.pos,
                 .block = expected.renderBlock,
-                .color = colorForStatus(status),
+                .color = colorResolver.resolveColor(*expected.renderBlock, status),
             };
             entriesByPos[worldKey.posKey]               = entry;
             dimensionScene.posColorMap[worldKey.posKey] = entry.color;
@@ -238,7 +224,7 @@ void ProjectionProjector::rebuildLocked(
         }
 
         previousScene = mScene.load(std::memory_order_acquire);
-        currentScene  = buildScene(state, verifierState, viewState, *mPlacementCache);
+        currentScene  = buildScene(state, verifierState, viewState, *mPlacementCache, mColorResolver);
         mScene.store(currentScene, std::memory_order_release);
         mProjectedRevision = state.revision;
         mVerifierRevision  = verifierState.revision;
