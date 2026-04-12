@@ -1,10 +1,16 @@
 #include "VerifierTypes.h"
 
+#include "levishematic/LeviShematic.h"
+
 #include "mc/world/level/block/states/BlockState.h"
 
 #include <algorithm>
 
 namespace levishematic::verifier {
+
+    auto& getLogger() {
+    return levishematic::LeviShematic::getInstance().getSelf().getLogger();
+}
 
 BlockCompareSpec buildCompareSpecFromBlock(Block const& block) {
     BlockCompareSpec spec;
@@ -12,7 +18,7 @@ BlockCompareSpec buildCompareSpecFromBlock(Block const& block) {
     block.forEachState([&](BlockState const& state, int value) {
         spec.exactStates.push_back(BlockStateSnapshot{
             .stateId  = state.mID,
-            .value    = value,
+            .value    = *block.getState<int>(state.mID),
             .nameHash = state.mName->getHash(),
             .name     = state.mName->getString(),
         });
