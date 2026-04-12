@@ -66,17 +66,22 @@ LL_TYPE_INSTANCE_HOOK(
     }
 
     auto subChunkKey = encodeSubChunkKey(renderChunkGeometry.mPosition);
-    auto it          = tl_currentScene->bySubChunk.find(subChunkKey);
-    if (it == tl_currentScene->bySubChunk.end() || it->second.empty()) {
+    auto it                = tl_currentScene->bySubChunk.find(subChunkKey);
+    bool hasProjectionMesh = it != tl_currentScene->bySubChunk.end() && !it->second.empty();
+    bool hasColorOverride =
+        tl_currentScene->subChunksWithColorOverrides.find(subChunkKey) != tl_currentScene->subChunksWithColorOverrides.end();
+    if (!hasProjectionMesh && !hasColorOverride) {
         return result;
     }
 
     tl_hasProjection = true;
-    for (auto const& entry : it->second) {
-        BlockQueueEntry queueEntry;
-        queueEntry.pos       = entry.pos;
-        queueEntry.blockInfo = entry.block;
-        this->mQueues[RENDERLAYER_BLEND].push_back(queueEntry);
+    if (hasProjectionMesh) {
+        for (auto const& entry : it->second) {
+            BlockQueueEntry queueEntry;
+            queueEntry.pos       = entry.pos;
+            queueEntry.blockInfo = entry.block;
+            this->mQueues[RENDERLAYER_BLEND].push_back(queueEntry);
+        }
     }
 
     return result;

@@ -13,6 +13,7 @@
 #include <memory>
 #include <mutex>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 class RenderChunkCoordinator;
@@ -42,8 +43,9 @@ struct ProjectionScene {
     struct DimensionScene {
         std::unordered_map<uint64_t, std::vector<ProjEntry>> bySubChunk;
         std::unordered_map<uint64_t, mce::Color>             posColorMap;
+        std::unordered_set<uint64_t>                         subChunksWithColorOverrides;
 
-        [[nodiscard]] bool empty() const { return posColorMap.empty(); }
+        [[nodiscard]] bool empty() const { return bySubChunk.empty() && posColorMap.empty(); }
     };
 
     std::unordered_map<int, DimensionScene> byDimension;

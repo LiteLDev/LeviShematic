@@ -24,6 +24,10 @@ void markSceneSubChunks(
             dirtyKeys.insert(subChunkKey);
         }
     }
+
+    for (auto const& subChunkKey : scene->subChunksWithColorOverrides) {
+        dirtyKeys.insert(subChunkKey);
+    }
 }
 
 void triggerRebuildForScene(
@@ -47,6 +51,18 @@ void triggerRebuildForScene(
                 coordinator->_setDirty(pos, pos, true, false, false);
                 continue;
             }
+
+            if (currentScene->subChunksWithColorOverrides.contains(subChunkKey)) {
+                for (auto const& [posKey, color] : currentScene->posColorMap) {
+                    (void)color;
+                    auto const pos = util::decodePosKey(posKey);
+                    if (util::subChunkKeyFromWorldPos(pos.x, pos.y, pos.z) == subChunkKey) {
+                        coordinator->_setDirty(pos, pos, true, false, false);
+                        break;
+                    }
+                }
+                continue;
+            }
         }
 
         if (previousScene) {
@@ -54,6 +70,18 @@ void triggerRebuildForScene(
             if (previousIt != previousScene->bySubChunk.end() && !previousIt->second.empty()) {
                 auto const& pos = previousIt->second.front().pos;
                 coordinator->_setDirty(pos, pos, true, false, false);
+                continue;
+            }
+
+            if (previousScene->subChunksWithColorOverrides.contains(subChunkKey)) {
+                for (auto const& [posKey, color] : previousScene->posColorMap) {
+                    (void)color;
+                    auto const pos = util::decodePosKey(posKey);
+                    if (util::subChunkKeyFromWorldPos(pos.x, pos.y, pos.z) == subChunkKey) {
+                        coordinator->_setDirty(pos, pos, true, false, false);
+                        break;
+                    }
+                }
             }
         }
     }
@@ -92,19 +120,44 @@ std::shared_ptr<const ProjectionScene> buildScene(
                 ? verifier::VerificationStatus::Unknown
                 : statusIt->second;
             auto& dimensionScene = next->byDimension[placement.dimensionId];
+            auto color           = colorResolver.resolveColor(*expected.renderBlock, status);
+            auto subChunkKey     = util::subChunkKeyFromWorldPos(expected.pos.x, expected.pos.y, expected.pos.z);
             if (verifier::isHiddenStatus(status)) {
                 entriesByPos.erase(worldKey.posKey);
                 dimensionScene.posColorMap.erase(worldKey.posKey);
+                dimensionScene.subChunksWithColorOverrides.erase(subChunkKey);
+                for (auto const& [otherPosKey, otherColor] : dimensionScene.posColorMap) {
+                    (void)otherColor;
+                    auto const otherPos = util::decodePosKey(otherPosKey);
+                    if (util::subChunkKeyFromWorldPos(otherPos.x, otherPos.y, otherPos.z) == subChunkKey) {
+                        dimensionScene.subChunksWithColorOverrides.insert(subChunkKey);
+                        break;
+                    }
+                }
+                continue;
+            }
+
+            if (status == verifier::VerificationStatus::PropertyMismatch) {
+                entriesByPos.erase(worldKey.posKey);
+                dimensionScene.posColorMap[worldKey.posKey] = color;
+                dimensionScene.subChunksWithColorOverrides.insert(subChunkKey);
+                continue;
+            }
+            if (status == verifier::VerificationStatus::BlockMismatch) {
+                entriesByPos.erase(worldKey.posKey);
+                dimensionScene.posColorMap[worldKey.posKey] = color;
+                dimensionScene.subChunksWithColorOverrides.insert(subChunkKey);
                 continue;
             }
 
             ProjEntry entry{
                 .pos   = expected.pos,
                 .block = expected.renderBlock,
-                .color = colorResolver.resolveColor(*expected.renderBlock, status),
+                .color = color,
             };
             entriesByPos[worldKey.posKey]               = entry;
             dimensionScene.posColorMap[worldKey.posKey] = entry.color;
+            dimensionScene.subChunksWithColorOverrides.insert(subChunkKey);
         }
     }
 
